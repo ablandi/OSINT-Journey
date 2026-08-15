@@ -1,0 +1,21 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostList from "../../components/PostList.astro";
+import { sortPosts } from "../../utils/posts";
+
+const posts = sortPosts(await getCollection("blog"));
+---
+
+<BaseLayout
+  title="Blog"
+  description="All posts from the OSINT Journey blog."
+>
+  <section class="hero">
+    <h1>Blog</h1>
+    <p>All posts, newest first.</p>
+  </section>
+  <section>
+    <PostList posts={posts} />
+  </section>
+</BaseLayout>
