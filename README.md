@@ -52,5 +52,5 @@ lost. Every published page rebuilds to markup identical to the live site (ignori
 whitespace and CSS-minifier formatting), but file organization and naming inside `src/`
 are a reasonable reconstruction rather than a guaranteed copy of the original.
 
-Dates render in `America/Los_Angeles` in `src/utils/date.ts` to match how the live site
-displays them (one day earlier than the `pubDate` value, which the original build also did).
+Dates render in UTC (`src/utils/date.ts`), so a post displays exactly the `pubDate` in its
+frontmatter. The live site rendered them one day earlier; that off-by-one was not carried over.
