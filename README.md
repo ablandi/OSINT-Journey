@@ -1,4 +1,4 @@
-# OSINT Journey
+# OSINT-Journey
 
 Source for [whatsittoya.netlify.app](https://whatsittoya.netlify.app/) — a static Astro blog
 documenting a journey learning open source intelligence (OSINT).
