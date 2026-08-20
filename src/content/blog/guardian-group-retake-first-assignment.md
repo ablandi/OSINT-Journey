@@ -44,6 +44,8 @@ The mugshot was the same woman as the Facebook account. The Facebook account was
 
 That is the moment it stopped being an inference and became an identification. Not because a search engine told me a name, but because the ad, the social account, and the mugshot were all the same person, reached through three separate routes.
 
+I submitted my findings, and the admin approved them.
+
 ## What the first assignment taught me
 
 **The first plausible answer is the most dangerous one.** FastPeopleSearch handed me a name in about a minute. Had I submitted it and been right, I would have learned nothing, and I would have kept a habit that eventually gets someone hurt.
