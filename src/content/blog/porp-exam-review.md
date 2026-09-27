@@ -1,6 +1,7 @@
 ---
 title: "Passing the PORP Exam: Practical OSINT Research Professional (TCM Security)"
 description: "My experience taking the PORP exam from TCM Security — hands-on, challenging, and exactly the kind of test that sharpens real OSINT skills."
+tags: ["Certifications"]
 pubDate: 2026-07-28
 ---
 

@@ -1,6 +1,7 @@
 ---
 title: "Book Review: Take Pornhub Down by Laila Mickelwait"
 description: "My reflections on Take Pornhub Down, Laila Mickelwait's account of the #Traffickinghub movement."
+tags: ["Book Reviews"]
 pubDate: 2026-07-25
 ---
 

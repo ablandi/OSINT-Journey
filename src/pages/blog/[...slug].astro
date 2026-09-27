@@ -2,6 +2,7 @@
 import { getCollection, render, type CollectionEntry } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { formatDate, isoDate } from "../../utils/date";
+import { slugifyTag } from "../../utils/tags";
 
 export async function getStaticPaths() {
   const posts = await getCollection("blog");
@@ -21,7 +22,19 @@ const { Content } = await render(post);
     <header>
       <time datetime={isoDate(post.data.pubDate)}>{formatDate(post.data.pubDate)}</time>
       <h1>{post.data.title}</h1>
+      {
+        post.data.tags && post.data.tags.length > 0 && (
+          <p class="post-tags">
+            {post.data.tags.map((tag) => (
+              <a href={`/blog/tags/${slugifyTag(tag)}`}>{tag}</a>
+            ))}
+          </p>
+        )
+      }
     </header>
     <Content />
+    <footer class="post-footer">
+      <p><a href="/blog">&larr; All posts</a></p>
+    </footer>
   </article>
 </BaseLayout>

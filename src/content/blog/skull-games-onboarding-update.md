@@ -1,6 +1,7 @@
 ---
 title: "Skull Games Onboarding: Background Check Cleared"
 description: "Where the Skull Games Task Force onboarding stands — the background investigation came back processed, and now I wait on the next steps."
+tags: ["Career"]
 pubDate: 2026-09-26
 ---
 

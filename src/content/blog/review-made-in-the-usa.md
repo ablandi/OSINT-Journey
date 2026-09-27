@@ -1,6 +1,7 @@
 ---
 title: "Book Review: Made in the USA by Aliesha Jordheim"
 description: "My reflections on Made in the USA, Aliesha Jordheim's firsthand account of surviving domestic sex trafficking."
+tags: ["Book Reviews"]
 pubDate: 2026-07-23
 ---
 

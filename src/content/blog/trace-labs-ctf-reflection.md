@@ -1,6 +1,7 @@
 ---
 title: "Reflection of My First Trace Labs CTF"
 description: "My first Trace Labs Search Party CTF — volunteering my OSINT skills on real missing person cases, and the crashed laptop that almost kept me out of it."
+tags: ["Investigations"]
 pubDate: 2026-08-15
 ---
 

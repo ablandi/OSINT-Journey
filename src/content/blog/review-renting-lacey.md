@@ -1,6 +1,7 @@
 ---
 title: "Book Review: Renting Lacey by Linda Smith"
 description: "My reflections on Renting Lacey, Linda Smith's account of domestic minor sex trafficking in America."
+tags: ["Book Reviews"]
 pubDate: 2026-07-21
 ---
 

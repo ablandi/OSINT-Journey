@@ -1,6 +1,7 @@
 ---
 title: "Book Review: Invading the Darkness by Linda Smith"
 description: "My reflections on Invading the Darkness, Linda Smith's account of confronting trafficking on a global scale."
+tags: ["Book Reviews"]
 pubDate: 2026-07-27
 ---
 

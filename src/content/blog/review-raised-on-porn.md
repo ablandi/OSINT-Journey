@@ -1,6 +1,7 @@
 ---
 title: "Book Review: Raised on Porn by Benjamin Nolot"
 description: "My reflections on Raised on Porn, Benjamin Nolot's exploration of how pornography shapes a generation."
+tags: ["Book Reviews"]
 pubDate: 2026-07-24
 ---
 

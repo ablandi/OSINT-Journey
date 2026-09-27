@@ -1,10 +1,11 @@
 ---
 title: "Skull Games Reached Out"
 description: "Skull Games — the nonprofit that hunts traffickers — emailed me about onboarding. I submitted their assessment today. Mostly, I just wanted to share the excitement."
+tags: ["Career"]
 pubDate: 2026-08-22
 ---
 
-Last month I submitted an application to volunteer my skills with [Skull Games](https://www.skullgames.org/), the nonprofit that puts OSINT to work hunting down traffickers.
+Last month I submitted an application to volunteer my skills with [Skull Games](https://skullgames.io/), the nonprofit that puts OSINT to work hunting down traffickers.
 
 A couple of days ago they emailed me about onboarding.
 

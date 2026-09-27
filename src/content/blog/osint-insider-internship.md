@@ -1,6 +1,7 @@
 ---
 title: "Interning with The OSINT Insider"
 description: "I've started an internship with Rachel Brooks at The OSINT Insider — studying the line between OSINT and traditional journalism, and how the publication works."
+tags: ["Career"]
 pubDate: 2026-09-26
 ---
 

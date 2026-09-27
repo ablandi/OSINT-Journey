@@ -1,6 +1,7 @@
 ---
 title: "Course Review: OSINT Fundamentals with Uncharted (Live, May 2024)"
 description: "My experience taking OSINT Fundamentals, a two-day live course from Uncharted, led by Justen Charters himself."
+tags: ["Course Reviews"]
 pubDate: 2026-07-30
 ---
 

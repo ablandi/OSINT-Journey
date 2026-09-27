@@ -1,6 +1,7 @@
 ---
 title: "Finishing Skull Games' Protect Your Family Course: Sessions 6–8"
 description: "The final three sessions of the Skull Games Task Force counter-trafficking course — the psychology of exploitation, the telltale signs, and why there is hope."
+tags: ["Course Reviews"]
 pubDate: 2026-09-26
 ---
 

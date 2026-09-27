@@ -1,0 +1,37 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import PostList from "../../../components/PostList.astro";
+import { sortPosts } from "../../../utils/posts";
+import { allTags } from "../../../utils/tags";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return allTags(posts).map(({ tag, slug }) => ({
+    params: { tag: slug },
+    props: { tag },
+  }));
+}
+
+const { tag } = Astro.props;
+const posts = sortPosts(
+  (await getCollection("blog")).filter((post) =>
+    (post.data.tags ?? []).includes(tag)
+  )
+);
+---
+
+<BaseLayout
+  title={tag}
+  description={`Posts tagged "${tag}" on the OSINT Journey blog.`}
+>
+  <section class="hero">
+    <h1>{tag}</h1>
+    <p>
+      {posts.length} post{posts.length === 1 ? "" : "s"} · <a href="/blog/tags">All tags</a>
+    </p>
+  </section>
+  <section>
+    <PostList posts={posts} />
+  </section>
+</BaseLayout>

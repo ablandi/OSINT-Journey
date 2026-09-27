@@ -1,6 +1,7 @@
 ---
 title: "Where it all began."
 description: "The documentary that first opened my eyes to the connection between exploitation and the demand behind it, and the moment this journey started."
+tags: ["Career"]
 pubDate: 2026-07-28
 ---
 

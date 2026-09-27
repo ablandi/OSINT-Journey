@@ -1,0 +1,28 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { allTags } from "../../../utils/tags";
+
+const tags = allTags(await getCollection("blog"));
+---
+
+<BaseLayout
+  title="Tags"
+  description="Browse OSINT Journey posts by topic."
+>
+  <section class="hero">
+    <h1>Tags</h1>
+    <p>Browse posts by topic.</p>
+  </section>
+  <section>
+    <ul class="tag-cloud">
+      {
+        tags.map(({ tag, slug, count }) => (
+          <li>
+            <a href={`/blog/tags/${slug}`}>{tag} <span>({count})</span></a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</BaseLayout>

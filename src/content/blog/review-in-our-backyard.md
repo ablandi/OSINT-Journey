@@ -1,6 +1,7 @@
 ---
 title: "Book Review: In Our Backyard by Nita Belles"
 description: "My reflections on In Our Backyard, Nita Belles' guide to recognizing and responding to human trafficking in local communities."
+tags: ["Book Reviews"]
 pubDate: 2026-07-22
 ---
 

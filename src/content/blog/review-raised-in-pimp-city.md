@@ -1,6 +1,7 @@
 ---
 title: "Book Review: Raised in Pimp City by Armand King"
 description: "My reflections on Raised in Pimp City, Armand King's insider account of the sex trade and his path away from it."
+tags: ["Book Reviews"]
 pubDate: 2026-07-26
 ---
 

@@ -1,6 +1,7 @@
 ---
 title: "Am I Ready?"
 description: "On pride, humility, failing Guardian Group's practical exams, and facing them again with a different heart."
+tags: ["Investigations", "Career"]
 pubDate: 2026-08-01
 ---
 
