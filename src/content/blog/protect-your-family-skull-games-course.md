@@ -72,6 +72,6 @@ Buyers are ordinary men across all demographics. There's no monster profile to l
 
 ## Where I'm headed
 
-Sessions 6 through 8 are still ahead of me. I'll write a follow-up post when I finish the course.
+Sessions 6 through 8 are now done — I finished the full course on September 17, two days ahead of schedule. The follow-up is here: [Finishing Skull Games' Protect Your Family Course: Sessions 6–8](/blog/protect-your-family-course-sessions-6-8).
 
 What I'll say for now is that the material is doing what I hoped it would: replacing vague conviction with specific, usable understanding. I came into this wanting to help. What I'm getting is a clearer picture of what helping actually requires — the definitions, the patterns, the language, and the honesty to look at the demand side instead of only the supply.
