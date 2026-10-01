@@ -31,6 +31,10 @@ That was the part that surprised me most. Everything I had been building toward 
 
 It is a strange mix of exhilarating and heavy. You are enjoying the work, genuinely, and at the same time you are aware of exactly why the work exists.
 
+![A dim investigation board covered in photos and notes, red string connecting them](/images/trace-labs-search.jpg)
+
+*Some searches lead somewhere unexpected.*
+
 ## What I took away from it
 
 **Preparation is not the same as readiness.** I knew the techniques. What I did not have yet was the rhythm of applying them under a clock with real stakes.
