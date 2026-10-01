@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /dead-drop/
+
+# field notes are filed where the robots don't look
