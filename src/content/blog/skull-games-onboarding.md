@@ -1,7 +1,8 @@
 ---
-title: "Skull Games Reached Out"
+title: "Skull Games Task Force Reached Out: Starting My Volunteer OSINT Analyst Journey"
 description: "Skull Games — the nonprofit that hunts traffickers — emailed me about onboarding. I submitted their assessment today. Mostly, I just wanted to share the excitement."
-tags: ["Career"]
+image: "/og-skull-games.jpg"
+tags: ["Career", "Volunteering"]
 pubDate: 2026-08-22
 ---
 

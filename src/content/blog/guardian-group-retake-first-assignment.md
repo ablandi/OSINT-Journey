@@ -1,6 +1,7 @@
 ---
 title: "Retaking Guardian Group's Assessment: The First Assignment"
-description: "Back in front of Guardian Group's Volunteer and Training Assessment. The first practical: one escort ad, a phone number, a username, and the discipline to not stop at the first promising answer."
+description: "Guardian Group's Volunteer and Training Assessment, retaken: one escort ad, a phone number, a username — and discipline to not stop at the first answer."
+image: "/og-field-work.jpg"
 tags: ["Investigations"]
 pubDate: 2026-08-18
 ---

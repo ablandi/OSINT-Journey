@@ -1,7 +1,8 @@
 ---
-title: "Book Review: Invading the Darkness by Linda Smith"
-description: "My reflections on Invading the Darkness, Linda Smith's account of confronting trafficking on a global scale."
-tags: ["Book Reviews"]
+title: "Book Review: Invading the Darkness by Linda Smith — Confronting Trafficking Globally"
+description: "Linda Smith's Invading the Darkness confronts human trafficking on a global scale — my reflections on faith-driven anti-trafficking work."
+image: "/og-book-reviews.jpg"
+tags: ["Book Reviews", "Human Trafficking"]
 pubDate: 2026-07-27
 ---
 
@@ -14,3 +15,7 @@ This book also reinforced something I keep coming back to in this reading list: 
 Finishing this book felt like closing a loop that started with *Renting Lacey*: from a single trafficked girl in America to a global system of exploitation and the people working, often invisibly, to dismantle it piece by piece.
 
 **Takeaway:** A fitting bookend to this reading list — if you want the international, systems-level view to pair with the domestic, personal-level books above, start here.
+
+---
+
+**Related:** [where it all began](/blog/where-it-all-began) · [*Renting Lacey* by Linda Smith](/blog/review-renting-lacey)

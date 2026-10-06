@@ -33,6 +33,7 @@ const imageURL = new URL(image, Astro.site);
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageURL} />
     <title>{pageTitle}</title>
+    <slot name="head" />
   </head>
   <body>
     <header>

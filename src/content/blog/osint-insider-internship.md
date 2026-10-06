@@ -1,6 +1,7 @@
 ---
 title: "Interning with The OSINT Insider"
 description: "I've started an internship with Rachel Brooks at The OSINT Insider — studying the line between OSINT and traditional journalism, and how the publication works."
+image: "/og-field-work.jpg"
 tags: ["Career"]
 pubDate: 2026-09-26
 ---
@@ -20,3 +21,7 @@ What I'm doing alongside it:
 Rachel also handed me my first mock project, which I've oriented on and parked while I work through the coursework.
 
 Why this matters to me: it's the same thread as everything else here — Trace Labs, the Skull Games course, the applications I've been putting in. OSINT in service of something real.
+
+---
+
+**Related:** [my first Trace Labs CTF](/blog/trace-labs-ctf-reflection) · [passing the PORP exam](/blog/porp-exam-review) · [where it all began](/blog/where-it-all-began)
