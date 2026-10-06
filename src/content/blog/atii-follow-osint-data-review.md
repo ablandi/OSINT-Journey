@@ -1,7 +1,8 @@
 ---
 title: "My First OSINT Training: ATII's Follow OSINT Data – Fight Slavery"
-description: "How a LinkedIn find led me to the Anti-Human Trafficking Intelligence Initiative's live training — the first time I saw OSINT named as the discipline behind what I wanted to do."
-tags: ["Course Reviews"]
+description: "How a LinkedIn find led me to the Anti-Human Trafficking Intelligence Initiative's live OSINT training — the first time I saw the discipline behind the mission."
+image: "/og-certifications.jpg"
+tags: ["Course Reviews", "Human Trafficking"]
 pubDate: 2026-07-30
 ---
 

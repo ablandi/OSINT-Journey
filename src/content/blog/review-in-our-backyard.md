@@ -1,7 +1,8 @@
 ---
-title: "Book Review: In Our Backyard by Nita Belles"
-description: "My reflections on In Our Backyard, Nita Belles' guide to recognizing and responding to human trafficking in local communities."
-tags: ["Book Reviews"]
+title: "Book Review: In Our Backyard by Nita Belles — Recognizing Human Trafficking Locally"
+description: "Nita Belles' In Our Backyard is a practical guide to recognizing and responding to human trafficking in your own community — my key takeaways."
+image: "/og-book-reviews.jpg"
+tags: ["Book Reviews", "Human Trafficking"]
 pubDate: 2026-07-22
 ---
 
@@ -14,3 +15,7 @@ Belles is direct about the fact that trafficking isn’t confined to dark alleys
 For anyone interested in OSINT or awareness work specifically, this book is valuable because it models a mindset: pay attention, document patterns, know who to report to, and don’t assume someone else will handle it. It’s less about becoming an investigator and more about becoming a competent, alert citizen.
 
 **Takeaway:** A practical, community-level companion to the more narrative-driven trafficking books — read this one if you want to know what to actually *do* with your newfound awareness.
+
+---
+
+**Related:** [where it all began](/blog/where-it-all-began)

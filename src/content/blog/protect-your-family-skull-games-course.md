@@ -1,7 +1,8 @@
 ---
 title: "Working Through Skull Games' Protect Your Family Course: Sessions 1–5"
-description: "Notes from the first five sessions of the Skull Games Task Force counter-trafficking course — definitions, the exploitation cycle, the making of a pimp, and killing the fantasy around demand."
-tags: ["Course Reviews"]
+description: "Sessions 1–5 of the Skull Games Task Force counter-trafficking course: definitions, the exploitation cycle, the making of a pimp, and the demand fantasy."
+image: "/og-skull-games.jpg"
+tags: ["Course Reviews", "Human Trafficking"]
 pubDate: 2026-09-14
 ---
 

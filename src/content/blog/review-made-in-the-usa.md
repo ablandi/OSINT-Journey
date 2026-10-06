@@ -1,7 +1,8 @@
 ---
-title: "Book Review: Made in the USA by Aliesha Jordheim"
-description: "My reflections on Made in the USA, Aliesha Jordheim's firsthand account of surviving domestic sex trafficking."
-tags: ["Book Reviews"]
+title: "Book Review: Made in the USA by Aliesha Jordheim — Surviving Domestic Sex Trafficking"
+description: "Aliesha Jordheim's Made in the USA is a firsthand account of surviving domestic sex trafficking — what her story taught me about victim identification."
+image: "/og-book-reviews.jpg"
+tags: ["Book Reviews", "Human Trafficking"]
 pubDate: 2026-07-23
 ---
 
@@ -14,3 +15,7 @@ What struck me most was how the grooming process was described — gradual, deli
 This book reinforced something I try to carry into every piece of awareness work I do now: survivors are not case studies, they are the most credible experts on what trafficking actually looks and feels like, and their voices should lead this conversation, not just supplement it.
 
 **Takeaway:** A powerful, difficult, necessary read — this is the book I’d recommend if you want to understand trafficking from the inside rather than from a policy or statistics lens.
+
+---
+
+**Related:** [where it all began](/blog/where-it-all-began) · [*Raised in Pimp City* by Armand King](/blog/review-raised-in-pimp-city)

@@ -1,6 +1,7 @@
 ---
 title: "What My Cybersecurity Degree Actually Taught Me (And Why It Matters for OSINT)"
 description: "A milestone on the journey: graduating from Capella University with a bachelor's in Information Technology, specializing in Information Assurance and Cybersecurity."
+image: "/og-certifications.jpg"
 tags: ["Career"]
 pubDate: 2026-08-04
 ---

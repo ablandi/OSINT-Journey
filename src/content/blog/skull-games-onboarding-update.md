@@ -1,7 +1,8 @@
 ---
-title: "Skull Games Onboarding: Background Check Cleared"
+title: "Volunteer OSINT Analyst Onboarding: Background Check Cleared — Skull Games Task Force"
 description: "Where the Skull Games Task Force onboarding stands — the background investigation came back processed, and now I wait on the next steps."
-tags: ["Career"]
+image: "/og-skull-games.jpg"
+tags: ["Career", "Volunteering"]
 pubDate: 2026-09-26
 ---
 

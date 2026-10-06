@@ -1,6 +1,7 @@
 ---
 title: "Hands-On Practice: KaseScenarios' Sinister Obsession"
 description: "How browser-based OSINT challenge scenarios from KaseScenarios bridged the gap between my first two courses — and why Sinister Obsession became my favorite."
+image: "/og-certifications.jpg"
 tags: ["Course Reviews"]
 pubDate: 2026-07-31
 ---

@@ -1,7 +1,8 @@
 ---
-title: "Book Review: Raised in Pimp City by Armand King"
-description: "My reflections on Raised in Pimp City, Armand King's insider account of the sex trade and his path away from it."
-tags: ["Book Reviews"]
+title: "Book Review: Raised in Pimp City by Armand King — An Insider's Account of the Sex Trade"
+description: "Armand King's Raised in Pimp City is an insider's account of the sex trade and his path out — essential reading on how exploitation really operates."
+image: "/og-book-reviews.jpg"
+tags: ["Book Reviews", "Human Trafficking"]
 pubDate: 2026-07-26
 ---
 
@@ -14,3 +15,7 @@ What I took from this book is that awareness work can’t only focus on victims 
 King’s redemption arc is also part of the book’s core message: people who have caused real harm can still choose to work against the system they were once part of. That doesn’t erase the damage, but it does add another voice to the fight that carries a specific, hard-won credibility.
 
 **Takeaway:** An uncomfortable but important read — this book fills in the recruitment and coercion side of the story that most survivor and researcher accounts can only describe from the outside.
+
+---
+
+**Related:** [where it all began](/blog/where-it-all-began) · [*Made in the USA* by Aliesha Jordheim](/blog/review-made-in-the-usa)

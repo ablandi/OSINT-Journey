@@ -1,6 +1,7 @@
 ---
-title: "Where it all began."
+title: "Where It All Began: The Documentary That Started My OSINT Journey"
 description: "The documentary that first opened my eyes to the connection between exploitation and the demand behind it, and the moment this journey started."
+image: "/og-book-reviews.jpg"
 tags: ["Career"]
 pubDate: 2026-07-28
 ---

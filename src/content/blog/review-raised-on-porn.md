@@ -1,7 +1,8 @@
 ---
-title: "Book Review: Raised on Porn by Benjamin Nolot"
-description: "My reflections on Raised on Porn, Benjamin Nolot's exploration of how pornography shapes a generation."
-tags: ["Book Reviews"]
+title: "Book Review: Raised on Porn by Benjamin Nolot — How Pornography Shapes a Generation"
+description: "Benjamin Nolot's Raised on Porn explores how pornography shapes a generation — my reflections on its connection to exploitation and demand."
+image: "/og-book-reviews.jpg"
+tags: ["Book Reviews", "Human Trafficking"]
 pubDate: 2026-07-24
 ---
 
@@ -14,3 +15,7 @@ The parts of the book that affected me most were the accounts of how early expos
 This book pushed me to think less about pornography as an isolated personal choice and more as a cultural force with downstream victims — something that connects directly to why demand-side awareness matters as much as supply-side enforcement.
 
 **Takeaway:** A sobering, research-backed look at generational impact — pairs well with *Brain, Heart, World* if you want the long-form version of “The World” segment.
+
+---
+
+**Related:** [where it all began](/blog/where-it-all-began) · [*Take Pornhub Down* by Laila Mickelwait](/blog/review-take-pornhub-down)

@@ -1,6 +1,7 @@
 ---
-title: "Am I Ready?"
-description: "On pride, humility, failing Guardian Group's practical exams, and facing them again with a different heart."
+title: "Am I Ready for OSINT Field Work? Pride, Humility, and Retaking Guardian Group's Assessment"
+description: "On pride, humility, and failing Guardian Group's OSINT practical exams — then facing them again with a different heart and better discipline."
+image: "/og-field-work.jpg"
 tags: ["Investigations", "Career"]
 pubDate: 2026-08-01
 ---

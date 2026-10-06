@@ -1,7 +1,8 @@
 ---
-title: "Book Review: Take Pornhub Down by Laila Mickelwait"
-description: "My reflections on Take Pornhub Down, Laila Mickelwait's account of the #Traffickinghub movement."
-tags: ["Book Reviews"]
+title: "Book Review: Take Pornhub Down by Laila Mickelwait — The #Traffickinghub Movement"
+description: "Laila Mickelwait's Take Pornhub Down chronicles the #Traffickinghub movement — how open-source evidence helped take down an exploitation pipeline."
+image: "/og-book-reviews.jpg"
+tags: ["Book Reviews", "Human Trafficking"]
 pubDate: 2026-07-25
 ---
 
@@ -14,3 +15,7 @@ Mickelwait doesn’t shy away from the uncomfortable core issue: these platforms
 Reading this gave me a concrete sense of what “doing something” can look like beyond raising awareness — organizing evidence, working with survivors ethically, and applying sustained pressure on the platforms that enable exploitation at scale.
 
 **Takeaway:** The clearest picture on this list of what a real, structured campaign against trafficking-enabling platforms looks like — essential reading if you’re drawn to the investigative side of this fight.
+
+---
+
+**Related:** [where it all began](/blog/where-it-all-began) · [*Raised on Porn* by Benjamin Nolot](/blog/review-raised-on-porn)

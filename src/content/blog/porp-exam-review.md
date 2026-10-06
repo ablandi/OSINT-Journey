@@ -1,6 +1,7 @@
 ---
 title: "Passing the PORP Exam: Practical OSINT Research Professional (TCM Security)"
 description: "My experience taking the PORP exam from TCM Security — hands-on, challenging, and exactly the kind of test that sharpens real OSINT skills."
+image: "/og-certifications.jpg"
 tags: ["Certifications"]
 pubDate: 2026-07-28
 ---
@@ -31,3 +32,7 @@ The exam also demanded a level of documentation rigor I hadn’t fully internali
 Everything on this blog traces back to wanting to actually be useful in the fight against exploitation and trafficking, not just aware of it. Certifications like PORP are a concrete way to measure whether the skills I’ve been building on my own actually hold up under pressure. This one did — and it showed me exactly where I still have room to grow.
 
 If you’re on a similar path, learning OSINT with intent rather than just curiosity, I’d recommend it. Just go in ready to work.
+
+---
+
+**Related:** [my cybersecurity degree](/blog/capella-graduation-milestone) · [OSINT Fundamentals with Uncharted](/blog/osint-fundamentals-uncharted-review) · [KaseScenarios' Sinister Obsession](/blog/kasescenarios-sinister-obsession-review)
