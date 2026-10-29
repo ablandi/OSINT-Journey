@@ -2,13 +2,23 @@
 // Interactive 3D network-graph hero for the portfolio page.
 // Rendered client-side with Three.js (bundled via npm, no CDN) so the
 // site's strict Content-Security-Policy is respected.
+// Featured nodes are interactive: hovering one lights up its connections,
+// clicking one opens a highlight panel tied to real portfolio content.
 ---
 
 <div class="portfolio-scene-wrap">
   <canvas id="portfolio-scene" aria-hidden="true"></canvas>
+  <div id="scene-tooltip" class="scene-tooltip" hidden></div>
   <noscript>
     <p class="scene-fallback">Interactive 3D scene requires JavaScript.</p>
   </noscript>
+</div>
+<p class="scene-hint">Hover or tap a glowing node to explore — each one is a certification, a role, or a project.</p>
+<div id="scene-panel" class="scene-panel" aria-live="polite" hidden>
+  <button id="scene-panel-close" class="scene-panel-close" type="button" aria-label="Close highlight">×</button>
+  <p id="scene-panel-kicker" class="scene-panel-kicker"></p>
+  <p id="scene-panel-title" class="scene-panel-title"></p>
+  <p id="scene-panel-text" class="scene-panel-text"></p>
 </div>
 
 <script>
@@ -18,6 +28,13 @@
   if (canvas) {
     try {
       const wrap = canvas.parentElement;
+      const tooltip = document.getElementById("scene-tooltip");
+      const panel = document.getElementById("scene-panel");
+      const panelKicker = document.getElementById("scene-panel-kicker");
+      const panelTitle = document.getElementById("scene-panel-title");
+      const panelText = document.getElementById("scene-panel-text");
+      const panelClose = document.getElementById("scene-panel-close");
+
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -46,26 +63,51 @@
         points.push(new THREE.Vector3(x, y, z));
       }
 
+      // Soft radial glow texture, generated on a canvas (no external asset).
+      const glowCanvas = document.createElement("canvas");
+      glowCanvas.width = 64;
+      glowCanvas.height = 64;
+      const glowCtx = glowCanvas.getContext("2d");
+      const gradient = glowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, "rgba(255,255,255,1)");
+      gradient.addColorStop(0.4, "rgba(255,255,255,0.5)");
+      gradient.addColorStop(1, "rgba(255,255,255,0)");
+      glowCtx.fillStyle = gradient;
+      glowCtx.fillRect(0, 0, 64, 64);
+      const glowTexture = new THREE.CanvasTexture(glowCanvas);
+
+      const nodeMaterial = new THREE.PointsMaterial({
+        color: 0x60a5fa,
+        size: 0.34,
+        map: glowTexture,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
       const nodeGeometry = new THREE.BufferGeometry();
       nodeGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      const nodeMaterial = new THREE.PointsMaterial({
-        color: 0x93c5fd,
-        size: 0.09,
-        transparent: true,
-        opacity: 0.95,
-      });
       group.add(new THREE.Points(nodeGeometry, nodeMaterial));
 
-      // Link each node to its two nearest neighbours.
-      const linePositions = [];
+      // Link each node to its two nearest neighbours (deduplicated).
+      const edgeKeys = new Set();
+      const edges = [];
       points.forEach((p, i) => {
         const nearest = points
           .map((q, j) => ({ j, d: j === i ? Infinity : p.distanceToSquared(q) }))
           .sort((a, b) => a.d - b.d)
           .slice(0, 2);
         nearest.forEach(({ j }) => {
-          linePositions.push(p.x, p.y, p.z, points[j].x, points[j].y, points[j].z);
+          const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+          if (!edgeKeys.has(key)) {
+            edgeKeys.add(key);
+            edges.push([i, j]);
+          }
         });
+      });
+      const linePositions = [];
+      edges.forEach(([i, j]) => {
+        linePositions.push(points[i].x, points[i].y, points[i].z, points[j].x, points[j].y, points[j].z);
       });
       const lineGeometry = new THREE.BufferGeometry();
       lineGeometry.setAttribute(
@@ -75,9 +117,18 @@
       const lineMaterial = new THREE.LineBasicMaterial({
         color: 0x3b82f6,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.3,
       });
       group.add(new THREE.LineSegments(lineGeometry, lineMaterial));
+
+      // Highlight lines, rebuilt whenever a featured node is hovered.
+      const highlightGeometry = new THREE.BufferGeometry();
+      highlightGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(0), 3));
+      const highlightLines = new THREE.LineSegments(
+        highlightGeometry,
+        new THREE.LineBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.95 })
+      );
+      group.add(highlightLines);
 
       // A slow-pulsing central hub node.
       const hub = new THREE.Mesh(
@@ -85,6 +136,76 @@
         new THREE.MeshBasicMaterial({ color: 0x2563eb })
       );
       group.add(hub);
+
+      // Featured nodes: one per portfolio highlight, spread across the
+      // graph by farthest-point sampling so they don't cluster.
+      const FEATURES = [
+        { category: "Certification", title: "Practical OSINT Research Professional (PORP)", text: "TCM Security — professional OSINT research certification." },
+        { category: "Certification", title: "Google IT Support", text: "Google — IT support foundations." },
+        { category: "Certification", title: "Practical Help Desk Associate (PHDA)", text: "TCM Security — in progress." },
+        { category: "Experience", title: "Expert, Loyalty — T-Mobile", text: "Customer care and technical support, 2025–present (previously Technical Expert, 2024–2025)." },
+        { category: "Experience", title: "Volunteer OSINT Analyst — Skull Games Task Force", text: "Volunteer analyst supporting counter-trafficking operations, since October 2026." },
+        { category: "Experience", title: "OSINT Intern — The OSINT Insider", text: "Internship work where OSINT meets journalism, since September 2026." },
+        { category: "Experience", title: "Global OSINT Search Party CTF Participant — Trace Labs", text: "Competitive OSINT event focused on finding missing persons, August 2026." },
+        { category: "Project", title: "OSINT Journey blog", text: "Ongoing writing on OSINT research, certifications, CTFs, and counter-trafficking." },
+      ];
+      const CATEGORY_COLORS = { Certification: 0xf59e0b, Experience: 0x22d3ee, Project: 0xa78bfa };
+
+      const featuredIndices = [0];
+      while (featuredIndices.length < FEATURES.length) {
+        let best = -1;
+        let bestDist = -1;
+        points.forEach((p, i) => {
+          if (featuredIndices.includes(i)) return;
+          const d = Math.min(...featuredIndices.map((f) => p.distanceToSquared(points[f])));
+          if (d > bestDist) {
+            bestDist = d;
+            best = i;
+          }
+        });
+        featuredIndices.push(best);
+      }
+
+      const markers = [];
+      const halos = [];
+      const hitMeshes = [];
+      featuredIndices.forEach((nodeIndex, featureIndex) => {
+        const feature = FEATURES[featureIndex];
+        const color = CATEGORY_COLORS[feature.category];
+        const marker = new THREE.Mesh(
+          new THREE.SphereGeometry(0.13, 20, 20),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 })
+        );
+        marker.position.copy(points[nodeIndex]);
+        group.add(marker);
+        markers.push(marker);
+
+        const halo = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: glowTexture,
+            color,
+            transparent: true,
+            opacity: 0.55,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        halo.scale.setScalar(0.9);
+        halo.position.copy(points[nodeIndex]);
+        group.add(halo);
+        halos.push(halo);
+
+        // Invisible but raycastable hit target (opacity 0, not visible:false,
+        // so the raycaster still sees it).
+        const hit = new THREE.Mesh(
+          new THREE.SphereGeometry(0.42, 8, 8),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        );
+        hit.position.copy(points[nodeIndex]);
+        hit.userData.featureIndex = featureIndex;
+        group.add(hit);
+        hitMeshes.push(hit);
+      });
 
       const resize = () => {
         const w = wrap.clientWidth;
@@ -96,27 +217,105 @@
       resize();
       window.addEventListener("resize", resize);
 
-      // Mouse parallax tilt.
-      let targetX = 0;
-      let targetY = 0;
-      window.addEventListener("pointermove", (event) => {
-        targetY = (event.clientX / window.innerWidth - 0.5) * 0.35;
-        targetX = (event.clientY / window.innerHeight - 0.5) * 0.25;
-      });
-
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const clock = new THREE.Clock();
 
+      // Mouse parallax tilt (skipped entirely for reduced-motion users).
+      let targetX = 0;
+      let targetY = 0;
+      if (!reducedMotion) {
+        window.addEventListener("pointermove", (event) => {
+          targetY = (event.clientX / window.innerWidth - 0.5) * 0.35;
+          targetX = (event.clientY / window.innerHeight - 0.5) * 0.25;
+        });
+      }
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      let hovered = -1;
+
+      const setHighlight = (featureIndex) => {
+        hovered = featureIndex;
+        markers.forEach((marker, i) => {
+          marker.scale.setScalar(featureIndex === i ? 1.7 : 1);
+          marker.material.opacity = featureIndex === -1 || featureIndex === i ? 1 : 0.4;
+        });
+        halos.forEach((halo, i) => {
+          halo.material.opacity = featureIndex === -1 ? 0.55 : featureIndex === i ? 0.95 : 0.2;
+        });
+        nodeMaterial.opacity = featureIndex === -1 ? 0.9 : 0.35;
+        lineMaterial.opacity = featureIndex === -1 ? 0.3 : 0.12;
+        if (featureIndex === -1) {
+          highlightGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(0), 3));
+        } else {
+          const nodeIndex = featuredIndices[featureIndex];
+          const incident = edges.filter(([a, b]) => a === nodeIndex || b === nodeIndex);
+          const arr = new Float32Array(incident.length * 6);
+          incident.forEach(([a, b], k) => {
+            arr[k * 6] = points[a].x;
+            arr[k * 6 + 1] = points[a].y;
+            arr[k * 6 + 2] = points[a].z;
+            arr[k * 6 + 3] = points[b].x;
+            arr[k * 6 + 4] = points[b].y;
+            arr[k * 6 + 5] = points[b].z;
+          });
+          highlightGeometry.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+        }
+        canvas.style.cursor = featureIndex === -1 ? "" : "pointer";
+        if (reducedMotion) render();
+      };
+
+      const pickFeature = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(hitMeshes, false);
+        return hits.length ? hits[0].object.userData.featureIndex : -1;
+      };
+
+      canvas.addEventListener("pointermove", (event) => {
+        const featureIndex = pickFeature(event);
+        if (featureIndex !== hovered) setHighlight(featureIndex);
+        if (featureIndex !== -1) {
+          const rect = wrap.getBoundingClientRect();
+          tooltip.textContent = FEATURES[featureIndex].title;
+          tooltip.style.left = `${event.clientX - rect.left}px`;
+          tooltip.style.top = `${event.clientY - rect.top}px`;
+          tooltip.hidden = false;
+        } else {
+          tooltip.hidden = true;
+        }
+      });
+      canvas.addEventListener("pointerleave", () => {
+        setHighlight(-1);
+        tooltip.hidden = true;
+      });
+      canvas.addEventListener("click", (event) => {
+        const featureIndex = pickFeature(event);
+        if (featureIndex === -1) return;
+        const feature = FEATURES[featureIndex];
+        panelKicker.textContent = feature.category;
+        panelTitle.textContent = feature.title;
+        panelText.textContent = feature.text;
+        panel.hidden = false;
+      });
+      panelClose.addEventListener("click", () => {
+        panel.hidden = true;
+      });
+
       const render = () => {
         const t = clock.getElapsedTime();
-        group.rotation.y = t * 0.08 + targetY;
-        group.rotation.x = targetX;
-        hub.scale.setScalar(1 + Math.sin(t * 2) * 0.15);
+        if (!reducedMotion) {
+          group.rotation.y = t * 0.08 + targetY;
+          group.rotation.x = targetX;
+          hub.scale.setScalar(1 + Math.sin(t * 2) * 0.15);
+        }
         renderer.render(scene, camera);
       };
 
       if (reducedMotion) {
-        render(); // Single static frame, no animation loop.
+        render(); // Single static frame; re-rendered on demand by setHighlight.
       } else {
         const animate = () => {
           requestAnimationFrame(animate);
