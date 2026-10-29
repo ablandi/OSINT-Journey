@@ -1,0 +1,132 @@
+---
+// Interactive 3D network-graph hero for the portfolio page.
+// Rendered client-side with Three.js (bundled via npm, no CDN) so the
+// site's strict Content-Security-Policy is respected.
+---
+
+<div class="portfolio-scene-wrap">
+  <canvas id="portfolio-scene" aria-hidden="true"></canvas>
+  <noscript>
+    <p class="scene-fallback">Interactive 3D scene requires JavaScript.</p>
+  </noscript>
+</div>
+
+<script>
+  import * as THREE from "three";
+
+  const canvas = document.getElementById("portfolio-scene");
+  if (canvas) {
+    try {
+      const wrap = canvas.parentElement;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+      camera.position.z = 9;
+
+      // Network graph: nodes scattered in a flattened sphere, linked to
+      // their nearest neighbours — an OSINT link-chart motif.
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const NODE_COUNT = 90;
+      const positions = new Float32Array(NODE_COUNT * 3);
+      const points = [];
+      for (let i = 0; i < NODE_COUNT; i++) {
+        const r = 2.2 + Math.random() * 1.6;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta) * 0.7;
+        const z = r * Math.cos(phi) * 0.8;
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+        points.push(new THREE.Vector3(x, y, z));
+      }
+
+      const nodeGeometry = new THREE.BufferGeometry();
+      nodeGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const nodeMaterial = new THREE.PointsMaterial({
+        color: 0x93c5fd,
+        size: 0.09,
+        transparent: true,
+        opacity: 0.95,
+      });
+      group.add(new THREE.Points(nodeGeometry, nodeMaterial));
+
+      // Link each node to its two nearest neighbours.
+      const linePositions = [];
+      points.forEach((p, i) => {
+        const nearest = points
+          .map((q, j) => ({ j, d: j === i ? Infinity : p.distanceToSquared(q) }))
+          .sort((a, b) => a.d - b.d)
+          .slice(0, 2);
+        nearest.forEach(({ j }) => {
+          linePositions.push(p.x, p.y, p.z, points[j].x, points[j].y, points[j].z);
+        });
+      });
+      const lineGeometry = new THREE.BufferGeometry();
+      lineGeometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(linePositions), 3)
+      );
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0x3b82f6,
+        transparent: true,
+        opacity: 0.35,
+      });
+      group.add(new THREE.LineSegments(lineGeometry, lineMaterial));
+
+      // A slow-pulsing central hub node.
+      const hub = new THREE.Mesh(
+        new THREE.SphereGeometry(0.16, 24, 24),
+        new THREE.MeshBasicMaterial({ color: 0x2563eb })
+      );
+      group.add(hub);
+
+      const resize = () => {
+        const w = wrap.clientWidth;
+        const h = wrap.clientHeight;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      };
+      resize();
+      window.addEventListener("resize", resize);
+
+      // Mouse parallax tilt.
+      let targetX = 0;
+      let targetY = 0;
+      window.addEventListener("pointermove", (event) => {
+        targetY = (event.clientX / window.innerWidth - 0.5) * 0.35;
+        targetX = (event.clientY / window.innerHeight - 0.5) * 0.25;
+      });
+
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const clock = new THREE.Clock();
+
+      const render = () => {
+        const t = clock.getElapsedTime();
+        group.rotation.y = t * 0.08 + targetY;
+        group.rotation.x = targetX;
+        hub.scale.setScalar(1 + Math.sin(t * 2) * 0.15);
+        renderer.render(scene, camera);
+      };
+
+      if (reducedMotion) {
+        render(); // Single static frame, no animation loop.
+      } else {
+        const animate = () => {
+          requestAnimationFrame(animate);
+          render();
+        };
+        animate();
+      }
+    } catch {
+      // WebGL unavailable: leave the hero text standing on its own.
+      canvas.style.display = "none";
+    }
+  }
+</script>
