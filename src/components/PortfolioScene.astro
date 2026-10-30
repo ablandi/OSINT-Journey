@@ -1,19 +1,48 @@
 ---
-// Interactive 3D network-graph hero for the portfolio page.
+// Bruno Simon-style drivable 3D portfolio lot for the portfolio page.
 // Rendered client-side with Three.js (bundled via npm, no CDN) so the
-// site's strict Content-Security-Policy is respected.
-// Featured nodes are interactive: hovering one lights up its connections,
-// clicking one opens a highlight panel tied to real portfolio content.
+// site's strict Content-Security-Policy is respected. A low-poly car
+// drives around a neon lot; parking on a glowing zone pad opens the
+// highlight panel with that section's content (same panel as before).
+// Arcade physics are hand-rolled — no extra dependencies.
+// All copy is reused from the portfolio page itself: no phone, no email,
+// no address, no family details, no casework specifics. Contact = LinkedIn.
 ---
 
-<div class="portfolio-scene-wrap">
-  <canvas id="portfolio-scene" aria-hidden="true"></canvas>
-  <div id="scene-tooltip" class="scene-tooltip" hidden></div>
+<div class="portfolio-scene-wrap" id="drive-wrap">
+  <canvas id="drive-scene" aria-hidden="true"></canvas>
+  <div id="drive-overlay" class="scene-overlay">
+    <p class="scene-overlay-title">Click to drive</p>
+    <p class="scene-overlay-sub">
+      Explore the lot — park on a glowing zone pad to open each section.
+    </p>
+    <ul class="scene-overlay-keys">
+      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys — drive &amp; steer</li>
+      <li><kbd>Space</kbd> — brake</li>
+      <li><kbd>R</kbd> — reset car</li>
+      <li><kbd>Esc</kbd> — release controls</li>
+    </ul>
+  </div>
+  <button id="drive-exit" class="scene-exit" type="button" hidden>Exit driving ×</button>
+  <div id="drive-touch" class="scene-touch" hidden>
+    <div class="touch-group">
+      <button type="button" data-k="left" aria-label="Steer left">◀</button>
+      <button type="button" data-k="right" aria-label="Steer right">▶</button>
+    </div>
+    <div class="touch-group">
+      <button type="button" data-k="down" aria-label="Reverse">▼</button>
+      <button type="button" data-k="up" aria-label="Accelerate">▲</button>
+    </div>
+  </div>
   <noscript>
     <p class="scene-fallback">Interactive 3D scene requires JavaScript.</p>
   </noscript>
 </div>
-<p class="scene-hint">Hover or tap a glowing node to explore — each one is a certification, a role, or a project.</p>
+<p class="scene-hint" id="drive-hint">
+  Click the lot to drive. Park on a glowing zone pad — About, Certifications,
+  Experience, Projects, or Contact — to open its panel. Everything is also
+  written out in the sections below.
+</p>
 <div id="scene-panel" class="scene-panel" aria-live="polite" hidden>
   <button id="scene-panel-close" class="scene-panel-close" type="button" aria-label="Close highlight">×</button>
   <p id="scene-panel-kicker" class="scene-panel-kicker"></p>
@@ -24,189 +53,582 @@
 <script>
   import * as THREE from "three";
 
-  const canvas = document.getElementById("portfolio-scene");
+  const canvas = document.getElementById("drive-scene");
   if (canvas) {
     try {
-      const wrap = canvas.parentElement;
-      const tooltip = document.getElementById("scene-tooltip");
+      const wrap = document.getElementById("drive-wrap");
+      const overlay = document.getElementById("drive-overlay");
+      const exitBtn = document.getElementById("drive-exit");
+      const touchUI = document.getElementById("drive-touch");
+      const hint = document.getElementById("drive-hint");
       const panel = document.getElementById("scene-panel");
       const panelKicker = document.getElementById("scene-panel-kicker");
       const panelTitle = document.getElementById("scene-panel-title");
       const panelText = document.getElementById("scene-panel-text");
       const panelClose = document.getElementById("scene-panel-close");
 
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const isTouch = window.matchMedia("(pointer: coarse)").matches;
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.setClearColor(0x050914);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-      camera.position.z = 9;
+      scene.fog = new THREE.Fog(0x050914, 55, 130);
+      const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 300);
 
-      // Network graph: nodes scattered in a flattened sphere, linked to
-      // their nearest neighbours — an OSINT link-chart motif.
-      const group = new THREE.Group();
-      scene.add(group);
+      // ---- Lighting -----------------------------------------------------
+      scene.add(new THREE.HemisphereLight(0x8ab4ff, 0x0b1020, 0.85));
+      const sun = new THREE.DirectionalLight(0xdbeafe, 1.6);
+      sun.position.set(30, 44, 18);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.camera.left = -52;
+      sun.shadow.camera.right = 52;
+      sun.shadow.camera.top = 52;
+      sun.shadow.camera.bottom = -52;
+      sun.shadow.camera.near = 1;
+      sun.shadow.camera.far = 130;
+      sun.shadow.bias = -0.0006;
+      scene.add(sun);
 
-      const NODE_COUNT = 90;
-      const positions = new Float32Array(NODE_COUNT * 3);
-      const points = [];
-      for (let i = 0; i < NODE_COUNT; i++) {
-        const r = 2.2 + Math.random() * 1.6;
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(2 * Math.random() - 1);
-        const x = r * Math.sin(phi) * Math.cos(theta);
-        const y = r * Math.sin(phi) * Math.sin(theta) * 0.7;
-        const z = r * Math.cos(phi) * 0.8;
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = y;
-        positions[i * 3 + 2] = z;
-        points.push(new THREE.Vector3(x, y, z));
-      }
+      // ---- Soft radial glow texture (canvas, no external asset) ---------
+      const makeGlowTexture = () => {
+        const c = document.createElement("canvas");
+        c.width = 128;
+        c.height = 128;
+        const ctx = c.getContext("2d");
+        const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        g.addColorStop(0, "rgba(255,255,255,1)");
+        g.addColorStop(0.4, "rgba(255,255,255,0.45)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 128, 128);
+        return new THREE.CanvasTexture(c);
+      };
+      const glowTexture = makeGlowTexture();
 
-      // Soft radial glow texture, generated on a canvas (no external asset).
-      const glowCanvas = document.createElement("canvas");
-      glowCanvas.width = 64;
-      glowCanvas.height = 64;
-      const glowCtx = glowCanvas.getContext("2d");
-      const gradient = glowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-      gradient.addColorStop(0, "rgba(255,255,255,1)");
-      gradient.addColorStop(0.4, "rgba(255,255,255,0.5)");
-      gradient.addColorStop(1, "rgba(255,255,255,0)");
-      glowCtx.fillStyle = gradient;
-      glowCtx.fillRect(0, 0, 64, 64);
-      const glowTexture = new THREE.CanvasTexture(glowCanvas);
+      // ---- Ground: canvas-textured lot with a road cross ----------------
+      const LOT = 44; // half-size of the drivable lot
+      const makeGroundTexture = () => {
+        const c = document.createElement("canvas");
+        c.width = 1024;
+        c.height = 1024;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#0a0f1e";
+        ctx.fillRect(0, 0, 1024, 1024);
+        // Speckle
+        for (let i = 0; i < 4200; i++) {
+          ctx.fillStyle = `rgba(148,197,255,${Math.random() * 0.05})`;
+          ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2);
+        }
+        // Faint grid
+        ctx.strokeStyle = "rgba(96,165,250,0.05)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 1024; i += 64) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke();
+        }
+        // Road cross (98px ≈ 8 world units wide)
+        ctx.fillStyle = "#0e1730";
+        ctx.fillRect(463, 0, 98, 1024);
+        ctx.fillRect(0, 463, 1024, 98);
+        // Dashed centre lines
+        ctx.strokeStyle = "rgba(103,232,249,0.28)";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([20, 16]);
+        ctx.beginPath(); ctx.moveTo(512, 0); ctx.lineTo(512, 1024); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 512); ctx.lineTo(1024, 512); ctx.stroke();
+        ctx.setLineDash([]);
+        // Parking ticks along east/west edges
+        ctx.fillStyle = "rgba(226,232,240,0.13)";
+        for (let y = 60; y < 1000; y += 84) {
+          ctx.fillRect(18, y, 46, 5);
+          ctx.fillRect(960, y, 46, 5);
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+        return tex;
+      };
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(LOT * 2, LOT * 2),
+        new THREE.MeshStandardMaterial({ map: makeGroundTexture(), roughness: 0.95, metalness: 0 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
 
-      const nodeMaterial = new THREE.PointsMaterial({
-        color: 0x60a5fa,
-        size: 0.34,
-        map: glowTexture,
-        transparent: true,
-        opacity: 0.9,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      const nodeGeometry = new THREE.BufferGeometry();
-      nodeGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      group.add(new THREE.Points(nodeGeometry, nodeMaterial));
+      // ---- Perimeter walls with a neon top strip ------------------------
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x111c38, roughness: 0.8 });
+      const stripMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
+      const addWall = (x, z, w, d) => {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 1.1, d), wallMat);
+        wall.position.set(x, 0.55, z);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        scene.add(wall);
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(w, 0.09, d), stripMat);
+        strip.position.set(x, 1.15, z);
+        scene.add(strip);
+      };
+      addWall(0, -LOT, LOT * 2 + 1, 1);
+      addWall(0, LOT, LOT * 2 + 1, 1);
+      addWall(-LOT, 0, 1, LOT * 2 + 1);
+      addWall(LOT, 0, 1, LOT * 2 + 1);
 
-      // Link each node to its two nearest neighbours (deduplicated).
-      const edgeKeys = new Set();
-      const edges = [];
-      points.forEach((p, i) => {
-        const nearest = points
-          .map((q, j) => ({ j, d: j === i ? Infinity : p.distanceToSquared(q) }))
-          .sort((a, b) => a.d - b.d)
-          .slice(0, 2);
-        nearest.forEach(({ j }) => {
-          const key = i < j ? `${i}-${j}` : `${j}-${i}`;
-          if (!edgeKeys.has(key)) {
-            edgeKeys.add(key);
-            edges.push([i, j]);
-          }
+      // ---- Props & obstacles ----------------------------------------------
+      // Obstacles are AABBs the (circular) car collides with. Tippable props
+      // animate a fall on impact and then stop colliding.
+      const obstacles = [];
+      const addObstacle = (mesh, x, z, hx, hz, tippable) => {
+        mesh.position.x = x;
+        mesh.position.z = z;
+        scene.add(mesh);
+        obstacles.push({ mesh, x, z, hx, hz, tippable: !!tippable, dead: false, tipT: -1, tipAxis: "x", tipDir: 1 });
+        return mesh;
+      };
+
+      const coneMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
+      const coneStripeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+      const makeCone = () => {
+        const g = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.7), coneMat);
+        base.position.y = 0.04;
+        g.add(base);
+        const body = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.95, 14), coneMat);
+        body.position.y = 0.55;
+        body.castShadow = true;
+        g.add(body);
+        const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.26, 0.18, 14), coneStripeMat);
+        stripe.position.y = 0.55;
+        g.add(stripe);
+        return g;
+      };
+      const crateMat = new THREE.MeshStandardMaterial({ color: 0x8a6b3f, roughness: 0.9 });
+      const crateEdgeMat = new THREE.MeshStandardMaterial({ color: 0x5f4a2a, roughness: 0.9 });
+      const makeCrate = () => {
+        const g = new THREE.Group();
+        const box = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), crateMat);
+        box.position.y = 0.7;
+        box.castShadow = true;
+        box.receiveShadow = true;
+        g.add(box);
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.5), crateEdgeMat);
+        lid.position.y = 1.42;
+        g.add(lid);
+        return g;
+      };
+      const barrierMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+      const barrierStripeMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+      const makeBarrier = () => {
+        const g = new THREE.Group();
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.5, 0.35), barrierMat);
+        bar.position.y = 0.75;
+        bar.castShadow = true;
+        g.add(bar);
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(4.42, 0.14, 0.37), barrierStripeMat);
+        stripe.position.y = 0.75;
+        g.add(stripe);
+        [-1.9, 1.9].forEach((dx) => {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.55, 0.5), barrierMat);
+          leg.position.set(dx, 0.27, 0);
+          g.add(leg);
         });
-      });
-      const linePositions = [];
-      edges.forEach(([i, j]) => {
-        linePositions.push(points[i].x, points[i].y, points[i].z, points[j].x, points[j].y, points[j].z);
-      });
-      const lineGeometry = new THREE.BufferGeometry();
-      lineGeometry.setAttribute(
-        "position",
-        new THREE.BufferAttribute(new Float32Array(linePositions), 3)
-      );
-      const lineMaterial = new THREE.LineBasicMaterial({
-        color: 0x3b82f6,
-        transparent: true,
-        opacity: 0.3,
-      });
-      group.add(new THREE.LineSegments(lineGeometry, lineMaterial));
+        return g;
+      };
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.6 });
+      const makeLightPole = (color) => {
+        const g = new THREE.Group();
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 5.4, 8), poleMat);
+        pole.position.y = 2.7;
+        pole.castShadow = true;
+        g.add(pole);
+        const lamp = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3, 12, 12),
+          new THREE.MeshBasicMaterial({ color })
+        );
+        lamp.position.y = 5.5;
+        g.add(lamp);
+        const glow = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: glowTexture, color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        glow.scale.setScalar(2.6);
+        glow.position.y = 5.5;
+        g.add(glow);
+        return g;
+      };
+      const rampMat = new THREE.MeshStandardMaterial({ color: 0x1c2a4a, roughness: 0.85 });
+      const makeRamp = () => {
+        const g = new THREE.Group();
+        const wedge = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.5, 3.6), rampMat);
+        wedge.position.y = 0.62;
+        wedge.rotation.z = 0.42;
+        wedge.castShadow = true;
+        wedge.receiveShadow = true;
+        g.add(wedge);
+        const lip = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.1, 0.3), barrierStripeMat);
+        lip.position.set(-1.95, 1.12, 0);
+        lip.rotation.z = 0.42;
+        g.add(lip);
+        return g;
+      };
 
-      // Highlight lines, rebuilt whenever a featured node is hovered.
-      const highlightGeometry = new THREE.BufferGeometry();
-      highlightGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(0), 3));
-      const highlightLines = new THREE.LineSegments(
-        highlightGeometry,
-        new THREE.LineBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.95 })
-      );
-      group.add(highlightLines);
+      // Cones: slalom lines down the road cross + a few clusters.
+      [[-5.6, -14], [5.6, -14], [-5.6, -6], [5.6, -6], [-14, -5.6], [-6, -5.6], [-14, 5.6], [-6, 5.6],
+       [12, 12], [14.5, 12], [-20, -18], [20, 16], [-12, 30], [16, -34]].forEach(([x, z]) =>
+        addObstacle(makeCone(), x, z, 0.42, 0.42, true));
+      // Crates: two clusters + singles.
+      addObstacle(makeCrate(), 15, 5, 0.8, 0.8, true);
+      addObstacle(makeCrate(), 16.6, 5.2, 0.8, 0.8, true);
+      addObstacle(makeCrate(), -17, -9, 0.8, 0.8, true);
+      addObstacle(makeCrate(), -17.2, -10.6, 0.8, 0.8, true);
+      addObstacle(makeCrate(), 20, -31, 0.8, 0.8, true);
+      addObstacle(makeCrate(), -34, 12, 0.8, 0.8, true);
+      // Barriers.
+      const b1 = addObstacle(makeBarrier(), 0, -18, 2.3, 0.45, false);
+      const b2 = addObstacle(makeBarrier(), -15, 16, 2.3, 0.45, false);
+      b2.rotation.y = Math.PI / 2; b2.userData.rot = true; // swap AABB below
+      obstacles[obstacles.length - 1].hx = 0.45; obstacles[obstacles.length - 1].hz = 2.3;
+      const b3 = addObstacle(makeBarrier(), 33, -6, 2.3, 0.45, false);
+      b3.rotation.y = Math.PI / 2;
+      obstacles[obstacles.length - 1].hx = 0.45; obstacles[obstacles.length - 1].hz = 2.3;
+      // Light poles near the corners and mid-edges.
+      addObstacle(makeLightPole(0x67e8f9), -38, -38, 0.35, 0.35, false);
+      addObstacle(makeLightPole(0xf59e0b), 38, -38, 0.35, 0.35, false);
+      addObstacle(makeLightPole(0xa78bfa), 38, 38, 0.35, 0.35, false);
+      addObstacle(makeLightPole(0x67e8f9), -38, 38, 0.35, 0.35, false);
+      addObstacle(makeLightPole(0xfbbf24), 0, 38, 0.35, 0.35, false);
+      // Ramps (decorative wedges; treated as solid obstacles).
+      const r1 = addObstacle(makeRamp(), 35, 10, 2.4, 1.9, false);
+      const r2 = addObstacle(makeRamp(), -35, -18, 2.4, 1.9, false);
+      r2.rotation.y = Math.PI;
 
-      // A slow-pulsing central hub node.
-      const hub = new THREE.Mesh(
-        new THREE.SphereGeometry(0.16, 24, 24),
-        new THREE.MeshBasicMaterial({ color: 0x2563eb })
-      );
-      group.add(hub);
-
-      // Featured nodes: one per portfolio highlight, spread across the
-      // graph by farthest-point sampling so they don't cluster.
-      const FEATURES = [
-        { category: "Certification", title: "Practical OSINT Research Professional (PORP)", text: "TCM Security — professional OSINT research certification." },
-        { category: "Certification", title: "Google IT Support", text: "Google — IT support foundations." },
-        { category: "Certification", title: "Practical Help Desk Associate (PHDA)", text: "TCM Security — in progress." },
-        { category: "Experience", title: "Expert, Loyalty — T-Mobile", text: "Customer care and technical support, 2025–present (previously Technical Expert, 2024–2025)." },
-        { category: "Experience", title: "Volunteer OSINT Analyst — Skull Games Task Force", text: "Volunteer analyst supporting counter-trafficking operations, since October 2026." },
-        { category: "Experience", title: "OSINT Intern — The OSINT Insider", text: "Internship work where OSINT meets journalism, since September 2026." },
-        { category: "Experience", title: "Global OSINT Search Party CTF Participant — Trace Labs", text: "Competitive OSINT event focused on finding missing persons, August 2026." },
-        { category: "Project", title: "OSINT Journey blog", text: "Ongoing writing on OSINT research, certifications, CTFs, and counter-trafficking." },
+      // ---- Portfolio zones --------------------------------------------------
+      const ZONES = [
+        {
+          id: "about", label: "ABOUT", title: "About", color: 0x22d3ee, x: -27, z: -25,
+          text: "I started in telecom customer care, where I learned to listen for patterns — the pause before a lie, the account that didn't add up, the voice asking for help without asking. That instinct became OSINT. I went back to school, earned my degree in Information Technology with a specialization in Information Assurance and Cybersecurity, and began building toward analyst work that supports law enforcement against traffickers and predators.",
+        },
+        {
+          id: "certifications", label: "CERTIFICATIONS", title: "Certifications", color: 0xf59e0b, x: 27, z: -25,
+          text: "Practical OSINT Research Professional (PORP) — TCM Security · Google IT Support — Google · Practical Help Desk Associate (PHDA) — TCM Security, in progress.",
+        },
+        {
+          id: "experience", label: "EXPERIENCE", title: "Experience", color: 0xa78bfa, x: 27, z: 24,
+          text: "Expert, Loyalty — T-Mobile (2025–present; previously Technical Expert, 2024–2025) · Volunteer OSINT Analyst — Skull Games Task Force (since October 2026) · OSINT Intern — The OSINT Insider (since September 2026) · Global OSINT Search Party CTF Participant — Trace Labs (August 2026).",
+        },
+        {
+          id: "projects", label: "PROJECTS", title: "Projects", color: 0x60a5fa, x: -27, z: 24,
+          text: "OSINT Journey blog — ongoing writing on OSINT research, certifications, CTFs, and counter-trafficking — what I learn, what I get wrong, and how I improve. · OSINT research and writing — general open source research, methodology notes, and book and course reviews.",
+        },
+        {
+          id: "contact", label: "CONTACT", title: "Contact", color: 0xe879f9, x: 0, z: -35,
+          text: "The best place to reach me professionally is LinkedIn.",
+        },
       ];
-      const CATEGORY_COLORS = { Certification: 0xf59e0b, Experience: 0x22d3ee, Project: 0xa78bfa };
-
-      const featuredIndices = [0];
-      while (featuredIndices.length < FEATURES.length) {
-        let best = -1;
-        let bestDist = -1;
-        points.forEach((p, i) => {
-          if (featuredIndices.includes(i)) return;
-          const d = Math.min(...featuredIndices.map((f) => p.distanceToSquared(points[f])));
-          if (d > bestDist) {
-            bestDist = d;
-            best = i;
-          }
-        });
-        featuredIndices.push(best);
-      }
-
-      const markers = [];
-      const halos = [];
-      const hitMeshes = [];
-      featuredIndices.forEach((nodeIndex, featureIndex) => {
-        const feature = FEATURES[featureIndex];
-        const color = CATEGORY_COLORS[feature.category];
-        const marker = new THREE.Mesh(
-          new THREE.SphereGeometry(0.13, 20, 20),
-          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 })
+      const css = (hex) => `#${hex.toString(16).padStart(6, "0")}`;
+      const makeLabelSprite = (text, colorHex) => {
+        const c = document.createElement("canvas");
+        c.width = 512;
+        c.height = 128;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "rgba(5,9,20,0.72)";
+        ctx.strokeStyle = css(colorHex);
+        ctx.lineWidth = 5;
+        const r = 26;
+        ctx.beginPath();
+        ctx.roundRect(10, 22, 492, 84, r);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = "700 44px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = css(colorHex);
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = "#f1f5f9";
+        ctx.fillText(text, 256, 66);
+        const tex = new THREE.CanvasTexture(c);
+        const sprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
         );
-        marker.position.copy(points[nodeIndex]);
-        group.add(marker);
-        markers.push(marker);
-
-        const halo = new THREE.Sprite(
-          new THREE.SpriteMaterial({
-            map: glowTexture,
-            color,
-            transparent: true,
-            opacity: 0.55,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-          })
+        sprite.scale.set(9.4, 2.35, 1);
+        return sprite;
+      };
+      const zoneObjs = ZONES.map((zone) => {
+        const group = new THREE.Group();
+        group.position.set(zone.x, 0, zone.z);
+        const pad = new THREE.Mesh(
+          new THREE.CylinderGeometry(3.4, 3.4, 0.14, 36),
+          new THREE.MeshStandardMaterial({ color: 0x0b1226, emissive: zone.color, emissiveIntensity: 0.25, roughness: 0.6 })
         );
-        halo.scale.setScalar(0.9);
-        halo.position.copy(points[nodeIndex]);
-        group.add(halo);
-        halos.push(halo);
-
-        // Invisible but raycastable hit target (opacity 0, not visible:false,
-        // so the raycaster still sees it).
-        const hit = new THREE.Mesh(
-          new THREE.SphereGeometry(0.42, 8, 8),
-          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        pad.position.y = 0.07;
+        pad.receiveShadow = true;
+        group.add(pad);
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(3.45, 3.85, 40),
+          new THREE.MeshBasicMaterial({ color: zone.color, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
         );
-        hit.position.copy(points[nodeIndex]);
-        hit.userData.featureIndex = featureIndex;
-        group.add(hit);
-        hitMeshes.push(hit);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.16;
+        group.add(ring);
+        const beam = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.16, 0.16, 4.6, 8),
+          new THREE.MeshBasicMaterial({ color: zone.color, transparent: true, opacity: 0.55 })
+        );
+        beam.position.y = 2.3;
+        group.add(beam);
+        const label = makeLabelSprite(zone.label, zone.color);
+        label.position.y = 5.4;
+        group.add(label);
+        scene.add(group);
+        return { zone, group, pad, ring, label, active: false };
       });
 
+      // ---- The car -----------------------------------------------------------
+      const car = new THREE.Group();
+      const paint = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, metalness: 0.55, roughness: 0.35 });
+      const darkTrim = new THREE.MeshStandardMaterial({ color: 0x0b1220, metalness: 0.4, roughness: 0.5 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0e2233, metalness: 0.9, roughness: 0.12 });
+      const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.55, 3.6), paint);
+      bodyMesh.position.y = 0.55;
+      bodyMesh.castShadow = true;
+      car.add(bodyMesh);
+      const noseMesh = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.34, 0.7), paint);
+      noseMesh.position.set(0, 0.42, 1.95);
+      noseMesh.castShadow = true;
+      car.add(noseMesh);
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.5, 1.75), glassMat);
+      cabin.position.set(0, 1.05, -0.25);
+      cabin.castShadow = true;
+      car.add(cabin);
+      const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.08, 0.42), darkTrim);
+      spoiler.position.set(0, 1.0, -1.78);
+      car.add(spoiler);
+      [-0.6, 0.6].forEach((dx) => {
+        const strut = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.3, 0.09), darkTrim);
+        strut.position.set(dx, 0.82, -1.78);
+        car.add(strut);
+      });
+      const lightMat = new THREE.MeshBasicMaterial({ color: 0xfef9c3 });
+      const tailMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      [-0.55, 0.55].forEach((dx) => {
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.06), lightMat);
+        hl.position.set(dx, 0.52, 2.31);
+        car.add(hl);
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.06), tailMat);
+        tl.position.set(dx, 0.62, -1.82);
+        car.add(tl);
+      });
+      // Neon underglow (fake light, near-zero cost).
+      const underglow = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.6, 4.9),
+        new THREE.MeshBasicMaterial({ map: glowTexture, color: 0x22d3ee, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      underglow.rotation.x = -Math.PI / 2;
+      underglow.position.y = 0.04;
+      car.add(underglow);
+      // Headlight beam.
+      const beamLight = new THREE.SpotLight(0xbfe3ff, 90, 34, 0.55, 0.6, 1.4);
+      beamLight.position.set(0, 0.7, 1.9);
+      const beamTarget = new THREE.Object3D();
+      beamTarget.position.set(0, 0, 14);
+      car.add(beamTarget);
+      beamLight.target = beamTarget;
+      car.add(beamLight);
+      // Wheels: spin baked into geometry rotation; front pivots steer.
+      const wheelGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.3, 18);
+      wheelGeo.rotateZ(Math.PI / 2);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+      const hubMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.3 });
+      const makeWheel = () => {
+        const m = new THREE.Mesh(wheelGeo, wheelMat);
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.32, 10), hubMat);
+        hub.rotation.z = Math.PI / 2;
+        m.add(hub);
+        m.castShadow = true;
+        return m;
+      };
+      const wheels = [];
+      const frontPivots = [];
+      [[-0.85, 1.18, true], [0.85, 1.18, true], [-0.85, -1.18, false], [0.85, -1.18, false]].forEach(([wx, wz, front]) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(wx, 0.37, wz);
+        const wheel = makeWheel();
+        pivot.add(wheel);
+        car.add(pivot);
+        wheels.push(wheel);
+        if (front) frontPivots.push(pivot);
+      });
+      scene.add(car);
+
+      // ---- Driving state & input ---------------------------------------------
+      const SPAWN = { x: 0, z: 17, h: Math.PI }; // facing the CONTACT pad (north)
+      const carState = { x: SPAWN.x, z: SPAWN.z, h: SPAWN.h, speed: 0, steer: 0 };
+      const resetCar = () => {
+        carState.x = SPAWN.x;
+        carState.z = SPAWN.z;
+        carState.h = SPAWN.h;
+        carState.speed = 0;
+        carState.steer = 0;
+      };
+      const keys = new Set();
+      const touchKeys = { up: false, down: false, left: false, right: false };
+      let engaged = false;
+
+      const setEngaged = (on) => {
+        engaged = on;
+        overlay.hidden = on;
+        exitBtn.hidden = !on;
+        touchUI.hidden = !(on && isTouch);
+        wrap.style.touchAction = on ? "none" : "";
+        if (on) canvas.focus?.();
+      };
+      if (reducedMotion) {
+        // No driving for reduced-motion users: a static framed view, and the
+        // full content lives in the sections below (as it always did).
+        overlay.hidden = true;
+        if (hint) hint.textContent = "A drivable 3D version of this portfolio is available, but motion is reduced in your settings — everything it contains is written out in the sections below.";
+      } else {
+        overlay.addEventListener("click", () => setEngaged(true));
+        exitBtn.addEventListener("click", () => setEngaged(false));
+      }
+      window.addEventListener("keydown", (e) => {
+        if (!engaged) return;
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+        if (e.code === "Escape") { setEngaged(false); return; }
+        if (e.code === "KeyR") { resetCar(); return; }
+        keys.add(e.code);
+      });
+      window.addEventListener("keyup", (e) => keys.delete(e.code));
+      window.addEventListener("blur", () => keys.clear());
+      touchUI.querySelectorAll("button[data-k]").forEach((btn) => {
+        const k = btn.dataset.k;
+        const on = (e) => { e.preventDefault(); touchKeys[k] = true; };
+        const off = (e) => { e.preventDefault(); touchKeys[k] = false; };
+        btn.addEventListener("touchstart", on, { passive: false });
+        btn.addEventListener("touchend", off, { passive: false });
+        btn.addEventListener("touchcancel", off, { passive: false });
+        btn.addEventListener("mousedown", on);
+        btn.addEventListener("mouseup", off);
+        btn.addEventListener("mouseleave", off);
+      });
+
+      // ---- Panel --------------------------------------------------------------
+      let currentZone = null;
+      const openPanel = (zo) => {
+        panelKicker.textContent = "Portfolio zone";
+        panelTitle.textContent = zo.zone.title;
+        panelText.textContent = zo.zone.text;
+        panel.hidden = false;
+      };
+      panelClose.addEventListener("click", () => { panel.hidden = true; });
+
+      // ---- Physics --------------------------------------------------------------
+      const CAR_R = 1.35;
+      const stepPhysics = (dt) => {
+        const fwd = keys.has("KeyW") || keys.has("ArrowUp") || touchKeys.up;
+        const back = keys.has("KeyS") || keys.has("ArrowDown") || touchKeys.down;
+        const left = keys.has("KeyA") || keys.has("ArrowLeft") || touchKeys.left;
+        const right = keys.has("KeyD") || keys.has("ArrowRight") || touchKeys.right;
+        const brake = keys.has("Space");
+
+        const MAX_FWD = 24, MAX_REV = 9;
+        if (engaged) {
+          if (fwd) carState.speed += 16 * dt;
+          else if (back) carState.speed -= carState.speed > 0.5 ? 22 * dt : 10 * dt;
+          if (brake) {
+            const s = Math.sign(carState.speed);
+            carState.speed -= s * 34 * dt;
+            if (Math.sign(carState.speed) !== s) carState.speed = 0;
+          }
+        }
+        // Rolling drag + friction always apply.
+        carState.speed -= carState.speed * 0.7 * dt;
+        if (!fwd && !back) carState.speed -= Math.sign(carState.speed) * Math.min(Math.abs(carState.speed), 5 * dt);
+        carState.speed = THREE.MathUtils.clamp(carState.speed, -MAX_REV, MAX_FWD);
+        if (Math.abs(carState.speed) < 0.02 && !fwd && !back) carState.speed = 0;
+
+        // Steering: less twitchy at speed; the car only turns while moving.
+        const steerInput = (left ? 1 : 0) - (right ? 1 : 0);
+        const speedFactor = 1 - Math.min(Math.abs(carState.speed) / MAX_FWD, 1) * 0.45;
+        const steerTarget = steerInput * 0.55 * speedFactor;
+        carState.steer += (steerTarget - carState.steer) * Math.min(1, dt * 10);
+        if (Math.abs(carState.speed) > 0.05) {
+          carState.h += (carState.speed / 2.7) * Math.tan(carState.steer) * dt;
+        }
+
+        carState.x += Math.sin(carState.h) * carState.speed * dt;
+        carState.z += Math.cos(carState.h) * carState.speed * dt;
+
+        // World bounds.
+        const lim = LOT - 1.6;
+        if (carState.x < -lim) { carState.x = -lim; carState.speed *= 0.4; }
+        if (carState.x > lim) { carState.x = lim; carState.speed *= 0.4; }
+        if (carState.z < -lim) { carState.z = -lim; carState.speed *= 0.4; }
+        if (carState.z > lim) { carState.z = lim; carState.speed *= 0.4; }
+
+        // Obstacles: circle vs AABB.
+        for (const ob of obstacles) {
+          if (ob.dead) continue;
+          const cx = THREE.MathUtils.clamp(carState.x, ob.x - ob.hx, ob.x + ob.hx);
+          const cz = THREE.MathUtils.clamp(carState.z, ob.z - ob.hz, ob.z + ob.hz);
+          const dx = carState.x - cx;
+          const dz = carState.z - cz;
+          const d2 = dx * dx + dz * dz;
+          if (d2 >= CAR_R * CAR_R) continue;
+          const impact = Math.abs(carState.speed);
+          if (d2 > 1e-6) {
+            const d = Math.sqrt(d2);
+            carState.x = cx + (dx / d) * CAR_R;
+            carState.z = cz + (dz / d) * CAR_R;
+            if (ob.tippable && impact > 3) {
+              ob.dead = true;
+              ob.tipT = 0;
+              if (Math.abs(dx) > Math.abs(dz)) { ob.tipAxis = "z"; ob.tipDir = dx > 0 ? -1 : 1; }
+              else { ob.tipAxis = "x"; ob.tipDir = dz > 0 ? 1 : -1; }
+            }
+          } else {
+            // Car centre inside the box: push out along the smaller penetration.
+            const px = ob.hx + CAR_R - Math.abs(carState.x - ob.x);
+            const pz = ob.hz + CAR_R - Math.abs(carState.z - ob.z);
+            if (px < pz) carState.x = ob.x + Math.sign(carState.x - ob.x || 1) * (ob.hx + CAR_R);
+            else carState.z = ob.z + Math.sign(carState.z - ob.z || 1) * (ob.hz + CAR_R);
+            if (ob.tippable && impact > 3) { ob.dead = true; ob.tipT = 0; ob.tipAxis = "x"; ob.tipDir = 1; }
+          }
+          carState.speed *= 0.3;
+        }
+
+        // Sync meshes.
+        car.position.set(carState.x, 0, carState.z);
+        car.rotation.y = carState.h;
+        bodyMesh.rotation.z = -carState.steer * Math.min(Math.abs(carState.speed) / MAX_FWD, 1) * 0.35;
+        const spin = (carState.speed / 0.37) * dt;
+        wheels.forEach((w) => { w.rotation.x += spin; });
+        frontPivots.forEach((p) => { p.rotation.y = carState.steer * 0.9; });
+
+        // Zone pads.
+        let found = null;
+        for (const zo of zoneObjs) {
+          const dx = carState.x - zo.zone.x;
+          const dz = carState.z - zo.zone.z;
+          if (dx * dx + dz * dz < 3.4 * 3.4) { found = zo; break; }
+        }
+        if (found !== currentZone) {
+          currentZone = found;
+          if (found) openPanel(found);
+        }
+      };
+
+      // ---- Camera & loop ------------------------------------------------------------
+      const camPos = new THREE.Vector3(24, 16, 28);
+      const camTarget = new THREE.Vector3();
+      let sceneVisible = true;
+      if ("IntersectionObserver" in window) {
+        new IntersectionObserver((entries) => { sceneVisible = entries[0].isIntersecting; }, { threshold: 0.02 }).observe(wrap);
+      }
       const resize = () => {
         const w = wrap.clientWidth;
         const h = wrap.clientHeight;
@@ -217,115 +639,62 @@
       resize();
       window.addEventListener("resize", resize);
 
-      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const clock = new THREE.Clock();
-
-      // Mouse parallax tilt (skipped entirely for reduced-motion users).
-      let targetX = 0;
-      let targetY = 0;
-      if (!reducedMotion) {
-        window.addEventListener("pointermove", (event) => {
-          targetY = (event.clientX / window.innerWidth - 0.5) * 0.35;
-          targetX = (event.clientY / window.innerHeight - 0.5) * 0.25;
-        });
-      }
-
-      const raycaster = new THREE.Raycaster();
-      const pointer = new THREE.Vector2();
-      let hovered = -1;
-
-      const setHighlight = (featureIndex) => {
-        hovered = featureIndex;
-        markers.forEach((marker, i) => {
-          marker.scale.setScalar(featureIndex === i ? 1.7 : 1);
-          marker.material.opacity = featureIndex === -1 || featureIndex === i ? 1 : 0.4;
-        });
-        halos.forEach((halo, i) => {
-          halo.material.opacity = featureIndex === -1 ? 0.55 : featureIndex === i ? 0.95 : 0.2;
-        });
-        nodeMaterial.opacity = featureIndex === -1 ? 0.9 : 0.35;
-        lineMaterial.opacity = featureIndex === -1 ? 0.3 : 0.12;
-        if (featureIndex === -1) {
-          highlightGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(0), 3));
-        } else {
-          const nodeIndex = featuredIndices[featureIndex];
-          const incident = edges.filter(([a, b]) => a === nodeIndex || b === nodeIndex);
-          const arr = new Float32Array(incident.length * 6);
-          incident.forEach(([a, b], k) => {
-            arr[k * 6] = points[a].x;
-            arr[k * 6 + 1] = points[a].y;
-            arr[k * 6 + 2] = points[a].z;
-            arr[k * 6 + 3] = points[b].x;
-            arr[k * 6 + 4] = points[b].y;
-            arr[k * 6 + 5] = points[b].z;
-          });
-          highlightGeometry.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+      const renderFrame = (t) => {
+        // Tip-over animation for struck props.
+        for (const ob of obstacles) {
+          if (ob.tipT < 0) continue;
+          ob.tipT += 1 / 60 / 0.45;
+          const k = Math.min(ob.tipT, 1);
+          const angle = (1 - Math.pow(1 - k, 2)) * (Math.PI / 2) * 0.96;
+          if (ob.tipAxis === "x") ob.mesh.rotation.x = angle * ob.tipDir;
+          else ob.mesh.rotation.z = angle * ob.tipDir;
+          if (k >= 1) ob.tipT = -1;
         }
-        canvas.style.cursor = featureIndex === -1 ? "" : "pointer";
-        if (reducedMotion) render();
-      };
-
-      const pickFeature = (event) => {
-        const rect = canvas.getBoundingClientRect();
-        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-        raycaster.setFromCamera(pointer, camera);
-        const hits = raycaster.intersectObjects(hitMeshes, false);
-        return hits.length ? hits[0].object.userData.featureIndex : -1;
-      };
-
-      canvas.addEventListener("pointermove", (event) => {
-        const featureIndex = pickFeature(event);
-        if (featureIndex !== hovered) setHighlight(featureIndex);
-        if (featureIndex !== -1) {
-          const rect = wrap.getBoundingClientRect();
-          tooltip.textContent = FEATURES[featureIndex].title;
-          tooltip.style.left = `${event.clientX - rect.left}px`;
-          tooltip.style.top = `${event.clientY - rect.top}px`;
-          tooltip.hidden = false;
-        } else {
-          tooltip.hidden = true;
+        // Zone pad glow: pulse the active pad, breathe the rest.
+        for (const zo of zoneObjs) {
+          const isActive = zo === currentZone;
+          zo.pad.material.emissiveIntensity = isActive ? 0.85 + Math.sin(t * 6) * 0.25 : 0.25 + Math.sin(t * 1.6 + zo.zone.x) * 0.07;
+          const s = isActive ? 1.12 : 1;
+          zo.ring.scale.set(s, s, 1);
         }
-      });
-      canvas.addEventListener("pointerleave", () => {
-        setHighlight(-1);
-        tooltip.hidden = true;
-      });
-      canvas.addEventListener("click", (event) => {
-        const featureIndex = pickFeature(event);
-        if (featureIndex === -1) return;
-        const feature = FEATURES[featureIndex];
-        panelKicker.textContent = feature.category;
-        panelTitle.textContent = feature.title;
-        panelText.textContent = feature.text;
-        panel.hidden = false;
-      });
-      panelClose.addEventListener("click", () => {
-        panel.hidden = true;
-      });
-
-      const render = () => {
-        const t = clock.getElapsedTime();
-        if (!reducedMotion) {
-          group.rotation.y = t * 0.08 + targetY;
-          group.rotation.x = targetX;
-          hub.scale.setScalar(1 + Math.sin(t * 2) * 0.15);
+        if (engaged) {
+          const fx = Math.sin(carState.h), fz = Math.cos(carState.h);
+          camTarget.set(carState.x - fx * 9.5, 4.6, carState.z - fz * 9.5);
+          camPos.lerp(camTarget, 1 - Math.exp(-3.2 * (1 / 60)));
+          camera.position.copy(camPos);
+          camera.lookAt(carState.x + fx * 4, 1.1, carState.z + fz * 4);
+        } else {
+          const a = t * 0.07;
+          camera.position.set(Math.sin(a) * 31, 13.5, Math.cos(a) * 31);
+          camera.lookAt(0, 0.5, 0);
+          camPos.copy(camera.position);
         }
         renderer.render(scene, camera);
       };
 
       if (reducedMotion) {
-        render(); // Single static frame; re-rendered on demand by setHighlight.
+        car.position.set(carState.x, 0, carState.z);
+        car.rotation.y = carState.h;
+        camera.position.set(23, 16, 27);
+        camera.lookAt(0, 0.5, 0);
+        renderer.render(scene, camera); // single static frame
       } else {
         const animate = () => {
           requestAnimationFrame(animate);
-          render();
+          const dt = Math.min(clock.getDelta(), 0.05);
+          if (!sceneVisible) return;
+          if (engaged) stepPhysics(dt);
+          else { car.position.set(carState.x, 0, carState.z); car.rotation.y = carState.h; }
+          renderFrame(clock.elapsedTime);
         };
         animate();
       }
     } catch {
-      // WebGL unavailable: leave the hero text standing on its own.
+      // WebGL unavailable: hide the canvas; the hero text and all sections stand on their own.
       canvas.style.display = "none";
+      const ov = document.getElementById("drive-overlay");
+      if (ov) ov.style.display = "none";
     }
   }
 </script>
