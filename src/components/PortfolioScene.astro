@@ -2,19 +2,23 @@
 // Bruno Simon-style drivable 3D portfolio lot for the portfolio page.
 // Rendered client-side with Three.js (bundled via npm, no CDN) so the
 // site's strict Content-Security-Policy is respected. A low-poly car
-// drives around a neon lot; parking on a glowing zone pad opens the
-// highlight panel with that section's content (same panel as before).
-// Arcade physics are hand-rolled — no extra dependencies.
+// (styled after the Quadra Turbo-R V-Tech from Cyberpunk 2077) drives
+// around a neon lot; parking on a glowing zone pad opens the highlight
+// panel with that section's content (same panel as before).
+// Arcade physics are hand-rolled — no extra dependencies. Terrain is a
+// height model sampled from the two wedge ramps, so the ramps are fully
+// drivable: climb them, launch off the lip, land with a settle.
 // All copy is reused from the portfolio page itself: no phone, no email,
 // no address, no family details, no casework specifics. Contact = LinkedIn.
 ---
 
-<div class="portfolio-scene-wrap" id="drive-wrap">
+<div class="portfolio-scene-wrap" id="drive-wrap" data-version="drive-v2">
   <canvas id="drive-scene" aria-hidden="true"></canvas>
   <div id="drive-overlay" class="scene-overlay">
     <p class="scene-overlay-title">Click to drive</p>
     <p class="scene-overlay-sub">
-      Explore the lot — park on a glowing zone pad to open each section.
+      Explore the lot — park on a glowing zone pad to open each section,
+      and hit the ramps at speed to catch air.
     </p>
     <ul class="scene-overlay-keys">
       <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys — drive &amp; steer</li>
@@ -260,20 +264,66 @@
         g.add(glow);
         return g;
       };
-      const rampMat = new THREE.MeshStandardMaterial({ color: 0x1c2a4a, roughness: 0.85 });
-      const makeRamp = () => {
+      // ---- Ramps: true wedge geometry with a matching height model --------
+      // Each ramp is a prism: RAMP_L long along its uphill direction,
+      // RAMP_W wide, rising linearly from 0 to RAMP_H. The physics height
+      // model (groundHeightAt) uses the exact same profile, so what you
+      // see is precisely what the car rides on.
+      const RAMP_L = 5.4, RAMP_W = 3.6, RAMP_H = 1.15;
+      const makeWedgeGeometry = (L, W, H) => {
+        const hw = W / 2;
+        const A = [-L / 2, 0], B = [L / 2, 0], C = [L / 2, H];
+        const tris = [];
+        const quad = (p1, p2, p3, p4) => { tris.push(...p1, ...p2, ...p3, ...p1, ...p3, ...p4); };
+        const tri = (p1, p2, p3) => { tris.push(...p1, ...p2, ...p3); };
+        // Slope face (A -> C) and the vertical back face (B -> C).
+        quad([A[0], A[1], -hw], [A[0], A[1], hw], [C[0], C[1], hw], [C[0], C[1], -hw]);
+        quad([B[0], B[1], hw], [B[0], B[1], -hw], [C[0], C[1], -hw], [C[0], C[1], hw]);
+        // Side triangles.
+        tri([A[0], A[1], -hw], [B[0], B[1], -hw], [C[0], C[1], -hw]);
+        tri([A[0], A[1], hw], [C[0], C[1], hw], [B[0], B[1], hw]);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(tris, 3));
+        geo.computeVertexNormals();
+        return geo;
+      };
+      const rampMat = new THREE.MeshStandardMaterial({ color: 0x1c2a4a, roughness: 0.85, side: THREE.DoubleSide });
+      const ramps = [];
+      const addRamp = (x, z, rotY) => {
         const g = new THREE.Group();
-        const wedge = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.5, 3.6), rampMat);
-        wedge.position.y = 0.62;
-        wedge.rotation.z = 0.42;
+        const wedge = new THREE.Mesh(makeWedgeGeometry(RAMP_L, RAMP_W, RAMP_H), rampMat);
         wedge.castShadow = true;
         wedge.receiveShadow = true;
         g.add(wedge);
-        const lip = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.1, 0.3), barrierStripeMat);
-        lip.position.set(-1.95, 1.12, 0);
-        lip.rotation.z = 0.42;
+        const lip = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.09, RAMP_W), barrierStripeMat);
+        lip.position.set(RAMP_L / 2 - 0.12, RAMP_H + 0.02, 0);
         g.add(lip);
+        g.position.set(x, 0, z);
+        g.rotation.y = rotY;
+        scene.add(g);
+        // Uphill unit vector U = local +x after rotY; width vector V = local +z.
+        ramps.push({
+          x, z,
+          ux: Math.cos(rotY), uz: -Math.sin(rotY),
+          vx: Math.sin(rotY), vz: Math.cos(rotY),
+        });
         return g;
+      };
+      // Ground height under a point: the flat lot is 0; inside a ramp's
+      // footprint the wedge profile applies. Max of contributing surfaces.
+      const groundHeightAt = (x, z) => {
+        let h = 0;
+        for (const r of ramps) {
+          const dx = x - r.x;
+          const dz = z - r.z;
+          const s = dx * r.ux + dz * r.uz;
+          if (s < -RAMP_L / 2 || s > RAMP_L / 2) continue;
+          const w = dx * r.vx + dz * r.vz;
+          if (w < -RAMP_W / 2 || w > RAMP_W / 2) continue;
+          const rh = ((s + RAMP_L / 2) / RAMP_L) * RAMP_H;
+          if (rh > h) h = rh;
+        }
+        return h;
       };
 
       // Cones: slalom lines down the road cross + a few clusters.
@@ -301,10 +351,10 @@
       addObstacle(makeLightPole(0xa78bfa), 38, 38, 0.35, 0.35, false);
       addObstacle(makeLightPole(0x67e8f9), -38, 38, 0.35, 0.35, false);
       addObstacle(makeLightPole(0xfbbf24), 0, 38, 0.35, 0.35, false);
-      // Ramps (decorative wedges; treated as solid obstacles).
-      const r1 = addObstacle(makeRamp(), 35, 10, 2.4, 1.9, false);
-      const r2 = addObstacle(makeRamp(), -35, -18, 2.4, 1.9, false);
-      r2.rotation.y = Math.PI;
+      // Ramps: drivable wedges (see the height model above). The second
+      // one is rotated PI, so its slope climbs toward -x.
+      addRamp(35, 10, 0);
+      addRamp(-35, -18, Math.PI);
 
       // ---- Portfolio zones --------------------------------------------------
       const ZONES = [
@@ -387,92 +437,145 @@
         return { zone, group, pad, ring, label, active: false };
       });
 
-      // ---- The car -----------------------------------------------------------
+      // ---- The car: Quadra Turbo-R V-Tech inspired (Cyberpunk 2077) --------
+      // Low, wide wedge silhouette in bright yellow with black/carbon
+      // accents, built entirely from Three.js primitives: an extruded
+      // side-profile body, wide rear haunches over fat rear wheels, side
+      // air intakes, a prominent rear wing, slim headlight bars, an
+      // exposed dark engine block and a full-width rear light strip.
       const car = new THREE.Group();
-      const paint = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, metalness: 0.55, roughness: 0.35 });
-      const darkTrim = new THREE.MeshStandardMaterial({ color: 0x0b1220, metalness: 0.4, roughness: 0.5 });
-      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0e2233, metalness: 0.9, roughness: 0.12 });
-      const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.55, 3.6), paint);
-      bodyMesh.position.y = 0.55;
-      bodyMesh.castShadow = true;
-      car.add(bodyMesh);
-      const noseMesh = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.34, 0.7), paint);
-      noseMesh.position.set(0, 0.42, 1.95);
-      noseMesh.castShadow = true;
-      car.add(noseMesh);
-      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.5, 1.75), glassMat);
-      cabin.position.set(0, 1.05, -0.25);
-      cabin.castShadow = true;
-      car.add(cabin);
-      const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.08, 0.42), darkTrim);
-      spoiler.position.set(0, 1.0, -1.78);
-      car.add(spoiler);
-      [-0.6, 0.6].forEach((dx) => {
-        const strut = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.3, 0.09), darkTrim);
-        strut.position.set(dx, 0.82, -1.78);
-        car.add(strut);
+      car.rotation.order = "YXZ"; // yaw first, then terrain pitch, then roll
+      const paint = new THREE.MeshStandardMaterial({ color: 0xffc400, metalness: 0.35, roughness: 0.32 });
+      const carbonMat = new THREE.MeshStandardMaterial({ color: 0x0b0d12, metalness: 0.5, roughness: 0.45 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0a1626, metalness: 0.9, roughness: 0.12 });
+      const chromeMat = new THREE.MeshStandardMaterial({ color: 0xc7ced9, metalness: 0.85, roughness: 0.25 });
+      // Everything except the wheels; this group leans in turns.
+      const bodyGroup = new THREE.Group();
+      car.add(bodyGroup);
+      const addPart = (geo, mat, x, y, z) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        bodyGroup.add(m);
+        return m;
+      };
+      // Main body: side profile (nose at +x) extruded across the width,
+      // then rotated so the profile's +x becomes the car's +z (forward).
+      const profile = new THREE.Shape();
+      profile.moveTo(-2.2, 0.24);
+      profile.lineTo(2.18, 0.24);
+      profile.lineTo(2.28, 0.44);   // nose tip
+      profile.lineTo(0.5, 0.68);    // hood line
+      profile.lineTo(-1.5, 0.74);   // rear deck
+      profile.lineTo(-2.2, 0.64);
+      profile.closePath();
+      const bodyGeo = new THREE.ExtrudeGeometry(profile, { depth: 1.84, bevelEnabled: false });
+      bodyGeo.translate(0, 0, -0.92);
+      const bodyMain = new THREE.Mesh(bodyGeo, paint);
+      bodyMain.rotation.y = -Math.PI / 2;
+      bodyMain.castShadow = true;
+      bodyGroup.add(bodyMain);
+      // Black centre stripe over the hood/deck.
+      addPart(new THREE.BoxGeometry(0.52, 0.03, 1.8), carbonMat, 0, 0.705, 0);
+      // Glass canopy + black roof panel.
+      addPart(new THREE.BoxGeometry(1.42, 0.4, 1.85), glassMat, 0, 0.9, -0.35);
+      addPart(new THREE.BoxGeometry(1.3, 0.06, 1.1), carbonMat, 0, 1.12, -0.45);
+      // Side skirts.
+      addPart(new THREE.BoxGeometry(2.0, 0.16, 2.4), carbonMat, 0, 0.26, 0);
+      // Wide rear haunches over the rear wheels + side air intakes.
+      [-1.02, 1.02].forEach((dx) => {
+        addPart(new THREE.BoxGeometry(0.3, 0.36, 1.6), paint, dx, 0.52, -1.35);
+        addPart(new THREE.BoxGeometry(0.1, 0.32, 0.85), carbonMat, dx > 0 ? 1.0 : -1.0, 0.56, -0.45);
       });
+      // Front splitter + dark intake mouth.
+      addPart(new THREE.BoxGeometry(2.0, 0.09, 0.55), carbonMat, 0, 0.17, 2.1);
+      addPart(new THREE.BoxGeometry(1.45, 0.2, 0.08), carbonMat, 0, 0.36, 2.24);
+      // Slim aggressive headlight bars, angled in plan view.
       const lightMat = new THREE.MeshBasicMaterial({ color: 0xfef9c3 });
-      const tailMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-      [-0.55, 0.55].forEach((dx) => {
-        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.06), lightMat);
-        hl.position.set(dx, 0.52, 2.31);
-        car.add(hl);
-        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.06), tailMat);
-        tl.position.set(dx, 0.62, -1.82);
-        car.add(tl);
+      [-0.52, 0.52].forEach((dx) => {
+        const hl = addPart(new THREE.BoxGeometry(0.6, 0.07, 0.05), lightMat, dx, 0.52, 2.26);
+        hl.rotation.y = dx > 0 ? -0.18 : 0.18;
+        hl.castShadow = false;
       });
+      // Rear: full-width light strip, exposed engine block, twin exhausts.
+      const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a });
+      const tail = addPart(new THREE.BoxGeometry(1.8, 0.09, 0.05), tailMat, 0, 0.66, -2.22);
+      tail.castShadow = false;
+      addPart(new THREE.BoxGeometry(1.5, 0.3, 0.22), carbonMat, 0, 0.44, -2.16);
+      const exhaustGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.22, 10);
+      exhaustGeo.rotateX(Math.PI / 2);
+      [-0.42, 0.42].forEach((dx) => addPart(exhaustGeo, chromeMat, dx, 0.3, -2.26));
+      // Prominent rear wing: blade, struts and endplates.
+      addPart(new THREE.BoxGeometry(2.15, 0.07, 0.52), carbonMat, 0, 1.14, -2.0);
+      [-0.62, 0.62].forEach((dx) => addPart(new THREE.BoxGeometry(0.09, 0.44, 0.3), carbonMat, dx, 0.9, -2.0));
+      [-1.06, 1.06].forEach((dx) => addPart(new THREE.BoxGeometry(0.05, 0.24, 0.56), carbonMat, dx, 1.14, -2.0));
       // Neon underglow (fake light, near-zero cost).
       const underglow = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.6, 4.9),
+        new THREE.PlaneGeometry(3.8, 5.2),
         new THREE.MeshBasicMaterial({ map: glowTexture, color: 0x22d3ee, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
       );
       underglow.rotation.x = -Math.PI / 2;
-      underglow.position.y = 0.04;
+      underglow.position.y = 0.03;
       car.add(underglow);
       // Headlight beam.
       const beamLight = new THREE.SpotLight(0xbfe3ff, 90, 34, 0.55, 0.6, 1.4);
-      beamLight.position.set(0, 0.7, 1.9);
+      beamLight.position.set(0, 0.65, 2.0);
       const beamTarget = new THREE.Object3D();
       beamTarget.position.set(0, 0, 14);
       car.add(beamTarget);
       beamLight.target = beamTarget;
       car.add(beamLight);
-      // Wheels: spin baked into geometry rotation; front pivots steer.
-      const wheelGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.3, 18);
-      wheelGeo.rotateZ(Math.PI / 2);
+      // Wheels: slimmer fronts, fat rears. Spin uses each wheel's radius;
+      // front pivots steer.
       const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
       const hubMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.3 });
-      const makeWheel = () => {
-        const m = new THREE.Mesh(wheelGeo, wheelMat);
-        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.32, 10), hubMat);
-        hub.rotation.z = Math.PI / 2;
-        m.add(hub);
+      const makeWheel = (radius, width) => {
+        const geo = new THREE.CylinderGeometry(radius, radius, width, 20);
+        geo.rotateZ(Math.PI / 2);
+        const m = new THREE.Mesh(geo, wheelMat);
+        const hubGeo = new THREE.CylinderGeometry(radius * 0.45, radius * 0.45, width + 0.02, 10);
+        hubGeo.rotateZ(Math.PI / 2);
+        m.add(new THREE.Mesh(hubGeo, hubMat));
         m.castShadow = true;
         return m;
       };
       const wheels = [];
       const frontPivots = [];
-      [[-0.85, 1.18, true], [0.85, 1.18, true], [-0.85, -1.18, false], [0.85, -1.18, false]].forEach(([wx, wz, front]) => {
+      [[-0.88, 1.35, 0.36, 0.3, true], [0.88, 1.35, 0.36, 0.3, true],
+       [-0.95, -1.35, 0.42, 0.44, false], [0.95, -1.35, 0.42, 0.44, false]].forEach(([wx, wz, wr, ww, front]) => {
         const pivot = new THREE.Group();
-        pivot.position.set(wx, 0.37, wz);
-        const wheel = makeWheel();
+        pivot.position.set(wx, wr, wz);
+        const wheel = makeWheel(wr, ww);
         pivot.add(wheel);
         car.add(pivot);
-        wheels.push(wheel);
+        wheels.push({ mesh: wheel, r: wr });
         if (front) frontPivots.push(pivot);
       });
       scene.add(car);
 
       // ---- Driving state & input ---------------------------------------------
       const SPAWN = { x: 0, z: 17, h: Math.PI }; // facing the CONTACT pad (north)
-      const carState = { x: SPAWN.x, z: SPAWN.z, h: SPAWN.h, speed: 0, steer: 0 };
+      const carState = {
+        x: SPAWN.x, z: SPAWN.z, h: SPAWN.h, speed: 0, steer: 0,
+        // Terrain/air state: y is the car origin height, vy the ballistic
+        // vertical velocity while airborne, vyTrack the ground-following
+        // vertical velocity while grounded (seeds the launch velocity).
+        y: 0, vy: 0, vyTrack: 0, grounded: true,
+        pitch: 0, roll: 0, settleT: -1,
+      };
       const resetCar = () => {
         carState.x = SPAWN.x;
         carState.z = SPAWN.z;
         carState.h = SPAWN.h;
         carState.speed = 0;
         carState.steer = 0;
+        carState.y = 0;
+        carState.vy = 0;
+        carState.vyTrack = 0;
+        carState.grounded = true;
+        carState.pitch = 0;
+        carState.roll = 0;
+        carState.settleT = -1;
       };
       const keys = new Set();
       const touchKeys = { up: false, down: false, left: false, right: false };
@@ -480,6 +583,14 @@
 
       const setEngaged = (on) => {
         engaged = on;
+        if (!on) {
+          // Released mid-air or mid-slope: settle the car onto the ground
+          // where it sits so the attract view never shows it floating.
+          carState.y = groundHeightAt(carState.x, carState.z);
+          carState.vy = 0;
+          carState.vyTrack = 0;
+          carState.grounded = true;
+        }
         overlay.hidden = on;
         exitBtn.hidden = !on;
         touchUI.hidden = !(on && isTouch);
@@ -560,6 +671,8 @@
           carState.h += (carState.speed / 2.7) * Math.tan(carState.steer) * dt;
         }
 
+        const prevX = carState.x;
+        const prevZ = carState.z;
         carState.x += Math.sin(carState.h) * carState.speed * dt;
         carState.z += Math.cos(carState.h) * carState.speed * dt;
 
@@ -570,8 +683,58 @@
         if (carState.z < -lim) { carState.z = -lim; carState.speed *= 0.4; }
         if (carState.z > lim) { carState.z = lim; carState.speed *= 0.4; }
 
-        // Obstacles: circle vs AABB.
+        // ---- Terrain following, ramp launches and landings ----------------
+        // Grounded: the car's height tracks the sampled ground height and
+        // vyTrack records how fast that height is changing — climbing a
+        // ramp builds real upward velocity. When the ground falls away
+        // faster than the slope the car was following (the ramp lip),
+        // the car goes ballistic with that velocity and gravity takes over.
+        const GRAV = 26;
+        const prevY = carState.y;
+        const prevVy = carState.vyTrack;
+        let gH = groundHeightAt(carState.x, carState.z);
+        if (carState.grounded) {
+          if (gH >= prevY - 0.001) {
+            if (gH - prevY > 0.5) {
+              // Too tall to climb in one step (a wedge side or back face):
+              // treat it as a wall — undo the move and scrub speed.
+              carState.x = prevX;
+              carState.z = prevZ;
+              carState.speed *= 0.3;
+              gH = groundHeightAt(carState.x, carState.z);
+            }
+            carState.y = gH;
+            carState.vyTrack = dt > 0 ? (carState.y - prevY) / dt : 0;
+            if (prevVy < -4.5 && Math.abs(carState.vyTrack) < 1) carState.settleT = 0; // thump at a ramp base
+          } else if (prevVy > 0.6 || prevY - gH > 0.3) {
+            // Ground dropped away under a climbing (or cresting) car.
+            carState.grounded = false;
+            carState.vy = Math.max(prevVy, 0);
+            carState.vyTrack = 0;
+          } else {
+            // Gentle descent: stay glued to the slope.
+            carState.y = gH;
+            carState.vyTrack = dt > 0 ? (carState.y - prevY) / dt : 0;
+          }
+        }
+        if (!carState.grounded) {
+          carState.vy -= GRAV * dt;
+          carState.y += carState.vy * dt;
+          if (carState.y <= gH) {
+            const impact = -carState.vy;
+            carState.y = gH;
+            carState.grounded = true;
+            carState.vy = 0;
+            carState.vyTrack = 0;
+            if (impact > 5) { carState.settleT = 0; carState.speed *= 0.94; }
+          }
+        }
+
+        // Obstacles: circle vs AABB. Skipped while flying above prop height,
+        // so a good launch clears the cones and crates.
+        const skipProps = !carState.grounded && carState.y > 1.5;
         for (const ob of obstacles) {
+          if (skipProps) break;
           if (ob.dead) continue;
           const cx = THREE.MathUtils.clamp(carState.x, ob.x - ob.hx, ob.x + ob.hx);
           const cz = THREE.MathUtils.clamp(carState.z, ob.z - ob.hz, ob.z + ob.hz);
@@ -601,12 +764,41 @@
           carState.speed *= 0.3;
         }
 
+        // Terrain pitch & roll while grounded (sampled ahead/behind and
+        // left/right of the car); ballistic pitch while airborne.
+        const fX = Math.sin(carState.h), fZ = Math.cos(carState.h);
+        const rX = Math.cos(carState.h), rZ = -Math.sin(carState.h);
+        let targetPitch = 0;
+        let targetRoll = 0;
+        if (carState.grounded) {
+          const hF = groundHeightAt(carState.x + fX * 1.25, carState.z + fZ * 1.25);
+          const hB = groundHeightAt(carState.x - fX * 1.25, carState.z - fZ * 1.25);
+          targetPitch = Math.atan2(hF - hB, 2.5);
+          const hR = groundHeightAt(carState.x + rX * 0.85, carState.z + rZ * 0.85);
+          const hL = groundHeightAt(carState.x - rX * 0.85, carState.z - rZ * 0.85);
+          targetRoll = Math.atan2(hR - hL, 1.7);
+        } else {
+          targetPitch = Math.atan2(carState.vy, Math.max(Math.abs(carState.speed), 5)) * 0.6;
+        }
+        const blend = 1 - Math.exp(-(carState.grounded ? 14 : 7) * dt);
+        carState.pitch += (targetPitch - carState.pitch) * blend;
+        carState.roll += (targetRoll - carState.roll) * blend;
+        // Landing settle: a quick suspension dip after a hard touchdown.
+        let dip = 0;
+        if (carState.settleT >= 0) {
+          carState.settleT += dt / 0.28;
+          const k = Math.min(carState.settleT, 1);
+          dip = -0.07 * Math.sin(k * Math.PI) * (1 - k * 0.4);
+          if (k >= 1) carState.settleT = -1;
+        }
+
         // Sync meshes.
-        car.position.set(carState.x, 0, carState.z);
+        car.position.set(carState.x, carState.y + dip, carState.z);
         car.rotation.y = carState.h;
-        bodyMesh.rotation.z = -carState.steer * Math.min(Math.abs(carState.speed) / MAX_FWD, 1) * 0.35;
-        const spin = (carState.speed / 0.37) * dt;
-        wheels.forEach((w) => { w.rotation.x += spin; });
+        car.rotation.x = -carState.pitch;
+        car.rotation.z = carState.roll;
+        bodyGroup.rotation.z = -carState.steer * Math.min(Math.abs(carState.speed) / MAX_FWD, 1) * 0.35;
+        wheels.forEach((w) => { w.mesh.rotation.x += (carState.speed / w.r) * dt; });
         frontPivots.forEach((p) => { p.rotation.y = carState.steer * 0.9; });
 
         // Zone pads.
@@ -660,10 +852,10 @@
         }
         if (engaged) {
           const fx = Math.sin(carState.h), fz = Math.cos(carState.h);
-          camTarget.set(carState.x - fx * 9.5, 4.6, carState.z - fz * 9.5);
+          camTarget.set(carState.x - fx * 9.5, 4.6 + carState.y * 0.85, carState.z - fz * 9.5);
           camPos.lerp(camTarget, 1 - Math.exp(-3.2 * (1 / 60)));
           camera.position.copy(camPos);
-          camera.lookAt(carState.x + fx * 4, 1.1, carState.z + fz * 4);
+          camera.lookAt(carState.x + fx * 4, 1.1 + carState.y, carState.z + fz * 4);
         } else {
           const a = t * 0.07;
           camera.position.set(Math.sin(a) * 31, 13.5, Math.cos(a) * 31);
@@ -685,7 +877,12 @@
           const dt = Math.min(clock.getDelta(), 0.05);
           if (!sceneVisible) return;
           if (engaged) stepPhysics(dt);
-          else { car.position.set(carState.x, 0, carState.z); car.rotation.y = carState.h; }
+          else {
+            car.position.set(carState.x, carState.y, carState.z);
+            car.rotation.y = carState.h;
+            car.rotation.x = -carState.pitch;
+            car.rotation.z = carState.roll;
+          }
           renderFrame(clock.elapsedTime);
         };
         animate();
